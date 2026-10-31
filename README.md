@@ -13,5 +13,7 @@ Android 10+ (minSdk 29). Офлайн-приложение для контрол
 
 ```
 ci/remote_build.sh   # сборка на ноде, APK → dist/ и ~/Downloads (с проверкой SHA-256)
+ci/release.sh ["что нового"]   # сборка + MEGA (2 версии) + site/release.json + push + Discord
 ```
+Сайт — `site/` (GitHub Pages, https://relkin016.github.io/car_status_app/). Для MEGA нужен venv с `ci/requirements-mega.txt` (по умолчанию `~/.venvs/wallet-mega`).
 Версия — `appVersion` в `app/build.gradle.kts`. Ключ подписи — `keystore/` (вне git).

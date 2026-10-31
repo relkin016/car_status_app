@@ -9,3 +9,8 @@
 .kotlin/
 keystore/
 dist/
+
+# пароли и вебхук — не в git
+claude.md
+CLAUDE.md
+.mega
