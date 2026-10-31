@@ -29,8 +29,8 @@ git commit -q -m "release $version${prev:+ (previous $prev kept for rollback)}" 
   -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>" || true
 git push -q "${GIT_PUSH_URL:-git@github.com:relkin016/car_status_app.git}" HEAD:main
 
-webhook="${DISCORD_WEBHOOK:-$(grep -ohE 'https://discord.com/api/webhooks/[^ ]+' claude.md CLAUDE.md 2>/dev/null | head -1)}"
-{
+webhook="${DISCORD_WEBHOOK:-$(cat claude.md CLAUDE.md 2>/dev/null | grep -oE 'https://discord.com/api/webhooks/[^ ]+' | head -1 || true)}"
+notify() {
   echo "🚗 **Авто·Статус $version** собран и выложен"
   [ -n "$notes" ] && echo "$notes"
   echo "APK: $url"
@@ -38,5 +38,6 @@ webhook="${DISCORD_WEBHOOK:-$(grep -ohE 'https://discord.com/api/webhooks/[^ ]+'
   echo "Размер: $(( $(stat -c %s "$apk") / 1024 )) КБ · подпись проверена, x86 нет"
   [ -n "$prev" ] && echo "Откат: $prev — $prev_url"
   echo "Сайт: https://relkin016.github.io/car_status_app/"
-} | DISCORD_WEBHOOK="$webhook" python3 -I ci/discord.py
+}
+notify | DISCORD_WEBHOOK="$webhook" python3 -I ci/discord.py
 echo "готово: $version"
