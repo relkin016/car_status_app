@@ -3,32 +3,12 @@ package com.relkin.carstatus.data
 import java.time.LocalDate
 import java.time.MonthDay
 
-/** Базовый список ТО «из коробки»: (название, иконка, км, дни). Лимит 0 — не используется. */
 object Defaults {
-    val items = listOf(
-        Item(name = "Моторное масло и фильтр", icon = "oil", kmInterval = 10_000, dayInterval = 365),
-        Item(name = "Воздушный фильтр", icon = "air", kmInterval = 20_000, dayInterval = 730),
-        Item(name = "Салонный фильтр", icon = "air", kmInterval = 15_000, dayInterval = 365),
-        Item(name = "Топливный фильтр", icon = "fuel", kmInterval = 40_000, dayInterval = 1460),
-        Item(name = "Тормозные колодки передние", icon = "brake", kmInterval = 30_000, dayInterval = 1095),
-        Item(name = "Тормозные колодки задние", icon = "brake", kmInterval = 50_000, dayInterval = 1460),
-        Item(name = "Тормозные диски", icon = "brake", kmInterval = 80_000, dayInterval = 2190),
-        Item(name = "Тормозная жидкость", icon = "drop", kmInterval = 40_000, dayInterval = 730),
-        Item(name = "Антифриз", icon = "drop", kmInterval = 60_000, dayInterval = 1095),
-        Item(name = "Свечи зажигания", icon = "spark", kmInterval = 30_000, dayInterval = 1095),
-        Item(name = "Масло КПП", icon = "oil", kmInterval = 60_000, dayInterval = 1825),
-        Item(name = "Ремень / цепь ГРМ", icon = "belt", kmInterval = 60_000, dayInterval = 1825),
-        Item(name = "Приводной ремень", icon = "belt", kmInterval = 60_000, dayInterval = 1460),
-        Item(name = "Аккумулятор", icon = "battery", kmInterval = 0, dayInterval = 1825),
-        Item(name = "Щётки стеклоочистителя", icon = "wiper", kmInterval = 0, dayInterval = 365),
-        Item(name = "Шины (износ)", icon = "tire", kmInterval = 50_000, dayInterval = 2190),
-        Item(name = "Развал-схождение", icon = "tire", kmInterval = 15_000, dayInterval = 365),
-        Item(name = "Заправка кондиционера", icon = "ac", kmInterval = 0, dayInterval = 730),
-        Item(name = "Страховка (ОСЦПВ)", icon = "doc", kmInterval = 0, dayInterval = 365),
-    ).mapIndexed { i, it -> it.copy(position = i) }
-
     /** Иконки пунктов, доступные в редакторе. */
-    val icons = listOf("oil", "air", "fuel", "brake", "drop", "spark", "belt", "battery", "wiper", "tire", "ac", "doc", "build", "light", "engine")
+    val icons = listOf(
+        "oil", "air", "fuel", "brake", "drop", "spark", "belt", "battery", "wiper", "tire", "ac", "doc", "build", "light", "engine",
+        "chain", "bolt", "plug", "cable",
+    )
 }
 
 data class QuestStep(val key: String, val title: String, val hint: String = "")
@@ -41,6 +21,8 @@ data class Quest(
     val start: MonthDay,
     val end: MonthDay,
     val steps: List<QuestStep>,
+    /** Для каких видов транспорта. */
+    val kinds: Set<VehicleKind> = CARS,
 ) {
     fun isActive(d: LocalDate = LocalDate.now()): Boolean {
         val md = MonthDay.from(d)
@@ -54,6 +36,11 @@ data class Quest(
     fun startDate(year: Int): LocalDate = start.atYear(year)
     fun stepKey(season: Int, step: QuestStep) = "$key:$season:${step.key}"
 }
+
+private val CARS = setOf(VehicleKind.PETROL, VehicleKind.DIESEL, VehicleKind.ELECTRIC)
+private val ICE_CARS = setOf(VehicleKind.PETROL, VehicleKind.DIESEL)
+private val BIKES = setOf(VehicleKind.BICYCLE, VehicleKind.EBIKE, VehicleKind.ESCOOTER)
+private val E_LIGHT = setOf(VehicleKind.EBIKE, VehicleKind.ESCOOTER)
 
 object Quests {
     val all = listOf(
@@ -85,14 +72,65 @@ object Quests {
                 QuestStep("wipers", "Щётки", "После зимы обычно под замену"),
             ),
         ),
+        Quest(
+            "moto_winter", "Консервация на зиму", "🧊", MonthDay.of(10, 15), MonthDay.of(12, 15),
+            listOf(
+                QuestStep("wash", "Мойка и сушка", "Смыть грязь и соль, высушить, обработать хром и цепь"),
+                QuestStep("tank", "Полный бак + стабилизатор", "Полный бак не ржавеет изнутри; стабилизатор топлива — на зиму"),
+                QuestStep("oil", "Замена масла перед хранением", "Отработка с кислотами за зиму разъедает двигатель"),
+                QuestStep("battery", "Аккумулятор домой", "Снять, хранить в тепле, подзаряжать умным зарядным раз в месяц"),
+                QuestStep("chain", "Цепь", "Почистить и обильно смазать"),
+                QuestStep("tires", "Шины", "Поднять давление или поставить на подставки, чтобы не было плоских мест"),
+                QuestStep("cover", "Чехол и место", "Сухое помещение, дышащий чехол, заглушка в глушитель от грызунов"),
+            ),
+            setOf(VehicleKind.MOTO),
+        ),
+        Quest(
+            "moto_spring", "Расконсервация весной", "🌱", MonthDay.of(3, 1), MonthDay.of(5, 1),
+            listOf(
+                QuestStep("battery", "Аккумулятор", "Зарядить, проверить напряжение ≥ 12,6 В, клеммы"),
+                QuestStep("tires", "Шины", "Давление, трещины, дата выпуска, протектор"),
+                QuestStep("brakes", "Тормоза", "Колодки, уровень жидкости, ход рычага"),
+                QuestStep("chain", "Цепь", "Натяжение, смазка, износ звёзд"),
+                QuestStep("fluids", "Жидкости", "Масло, антифриз, тормозная — уровни и подтёки"),
+                QuestStep("lights", "Свет и сигналы", "Фары, стопы, поворотники, сигнал"),
+                QuestStep("docs", "Документы", "Страховка, права категории A"),
+                QuestStep("gear", "Экипировка", "Шлем без трещин, перчатки, защита"),
+            ),
+            setOf(VehicleKind.MOTO),
+        ),
+        Quest(
+            "bike_winter", "Хранение на зиму", "🧊", MonthDay.of(10, 15), MonthDay.of(12, 15),
+            listOf(
+                QuestStep("wash", "Мойка и сушка", "Смыть грязь и соль, не мыть подшипники под напором"),
+                QuestStep("chain", "Цепь", "Почистить и смазать — чтобы не заржавела"),
+                QuestStep("battery", "Аккумулятор в тепло", "Хранить при +10…+20 °C, заряд 40–60%, подзаряжать раз в 1–2 месяца", ),
+                QuestStep("tires", "Шины", "Подкачать или подвесить, чтобы не было плоских мест"),
+                QuestStep("place", "Сухое место", "Без перепадов температур и влажности; не на балконе"),
+            ),
+            BIKES,
+        ),
+        Quest(
+            "bike_spring", "Подготовка к сезону", "🌱", MonthDay.of(3, 1), MonthDay.of(5, 1),
+            listOf(
+                QuestStep("tires", "Шины и давление", "Давление по боковине, трещины, порезы; герметик в бескамерке"),
+                QuestStep("brakes", "Тормоза", "Колодки, тросики или прокачка гидравлики"),
+                QuestStep("chain", "Цепь и переключатели", "Смазка, растяжение цепи, настройка переключения"),
+                QuestStep("bolts", "Болты и люфты", "Руль, вынос, колёса, складной механизм — протянуть моментом"),
+                QuestStep("battery", "Аккумулятор", "Полный цикл зарядки, проверить запас хода"),
+                QuestStep("lights", "Свет и звонок", "Фара, задний фонарь, катафоты"),
+            ),
+            BIKES,
+        ),
     )
 
     fun byKey(k: String) = all.firstOrNull { it.key == k }
-    fun active(d: LocalDate = LocalDate.now()) = all.filter { it.isActive(d) }
+    fun of(kind: VehicleKind) = all.filter { kind in it.kinds }
+    fun active(kind: VehicleKind, d: LocalDate = LocalDate.now()) = of(kind).filter { it.isActive(d) }
 }
 
 /** Внесезонная подсказка: когда выгодно покупать. [months] — месяцы окна, уведомление в первый день окна. */
-data class Tip(val key: String, val title: String, val text: String, val months: Set<Int>) {
+data class Tip(val key: String, val title: String, val text: String, val months: Set<Int>, val kinds: Set<VehicleKind> = CARS) {
     fun isActive(d: LocalDate = LocalDate.now()) = d.monthValue in months
     /** С месяца [m] начинается окно (предыдущий месяц в окно не входит). */
     fun startsIn(m: Int) = m in months && (m + 10) % 12 + 1 !in months
@@ -102,12 +140,20 @@ object Tips {
     val all = listOf(
         Tip("winter_tires", "Зимние шины — дешевле весной", "С марта по июнь магазины распродают остатки зимней резины: скидки 15–30% и есть все размеры.", setOf(3, 4, 5, 6)),
         Tip("summer_tires", "Летние шины — дешевле осенью", "С сентября по декабрь летняя резина уходит в распродажу. Проверьте дату выпуска (DOT) — не старше 1–2 лет.", setOf(9, 10, 11, 12)),
-        Tip("antifreeze", "Антифриз и незамерзайка — летом", "Летом на них нет спроса — цены ниже, а к осени магазины поднимают цены и разбирают ходовые объёмы.", setOf(6, 7, 8)),
-        Tip("battery", "Аккумулятор — летом", "Пик продаж АКБ — первые морозы. Летом проще выбрать свежую батарею (дата выпуска на корпусе) и без наценки.", setOf(6, 7, 8)),
+        Tip("antifreeze", "Антифриз и незамерзайка — летом", "Летом на них нет спроса — цены ниже, а к осени магазины поднимают цены и разбирают ходовые объёмы.", setOf(6, 7, 8), ICE_CARS),
+        Tip("battery", "Аккумулятор — летом", "Пик продаж АКБ — первые морозы. Летом проще выбрать свежую батарею (дата выпуска на корпусе) и без наценки.", setOf(6, 7, 8), CARS + VehicleKind.MOTO),
         Tip("ac", "Кондиционер — заправка зимой/ранней весной", "С января по март на заправку кондиционера нет очередей и бывают акции; в мае цены растут.", setOf(1, 2, 3)),
         Tip("wipers", "Зимние щётки — летом", "Комплект зимних щёток летом стоит заметно дешевле, чем в ноябре.", setOf(7, 8)),
         Tip("tire_service", "Шиномонтаж — записаться заранее", "За 1–2 недели до сезонного переобувания очереди минимальны. Запишитесь, пока нет ажиотажа.", setOf(10, 3)),
+        Tip("moto_gear", "Мотоэкипировка — дешевле осенью", "С октября по декабрь магазины распродают шлемы, куртки и перчатки прошлого сезона.", setOf(10, 11, 12), setOf(VehicleKind.MOTO)),
+        Tip("moto_service", "ТО мотоцикла — зимой без очередей", "Зимой мотосервисы свободны и часто дают скидки; весной запись на недели вперёд.", setOf(1, 2), setOf(VehicleKind.MOTO)),
+        Tip("bike_buy", "Велосипеды и самокаты — дешевле осенью и зимой", "С октября по февраль распродают модели уходящего года: скидки до 20–40%.", setOf(10, 11, 12, 1, 2), BIKES),
+        Tip("bike_service", "Велосервис — зимой без очередей", "Зимой мастерские свободны: ТО, прокачка тормозов и замена трансмиссии быстрее и дешевле.", setOf(1, 2), BIKES),
+        Tip("e_battery", "Аккумулятор зимой — не на морозе", "Литий-ионную батарею самоката или велосипеда нельзя заряжать на холоде и хранить разряженной.", setOf(11, 12), E_LIGHT),
     )
 
-    fun active(d: LocalDate = LocalDate.now()) = all.filter { it.isActive(d) }
+    fun of(kind: VehicleKind) = all.filter { kind in it.kinds }
+    fun active(kind: VehicleKind, d: LocalDate = LocalDate.now()) = of(kind).filter { it.isActive(d) }
+    /** Подсказки хотя бы для одного из видов [kinds] — для общих уведомлений по всем гаражам. */
+    fun active(kinds: Set<VehicleKind>, d: LocalDate = LocalDate.now()) = all.filter { it.isActive(d) && it.kinds.any { k -> k in kinds } }
 }

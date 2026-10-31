@@ -14,11 +14,11 @@ import org.json.JSONObject
 import java.io.File
 
 /**
- * Единственная точка доступа к базе. Данных немного (годы записей — тысячи строк),
+ * Доступ к базе одного транспорта (у каждого — свой файл). Данных немного (годы записей — тысячи строк),
  * поэтому после каждой записи снимок перечитывается целиком.
  */
-class Repo(private val ctx: Context) {
-    private var helper = DbHelper(ctx)
+class Repo(private val ctx: Context, val dbName: String) {
+    private val helper = DbHelper(ctx, dbName)
     private val db: SQLiteDatabase get() = helper.writableDatabase
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Mutex()
@@ -53,15 +53,10 @@ class Repo(private val ctx: Context) {
         onChanged?.invoke()
     }
 
-    /** Закрыть базу (перед заменой файла при восстановлении) и открыть заново. */
-    fun reopen(replace: () -> Unit) {
-        helper.close()
-        replace()
-        helper = DbHelper(ctx)
-        reload()
-    }
+    /** Закрыть базу перед удалением транспорта. */
+    fun close() = helper.close()
 
-    val dbFile: File get() = ctx.getDatabasePath(Schema.NAME)
+    val dbFile: File get() = ctx.getDatabasePath(dbName)
 
     private fun load(): Snapshot {
         val d = db
@@ -105,12 +100,12 @@ class Repo(private val ctx: Context) {
 
     fun saveCar(car: Car) = write { putMeta("car", carToJson(car).toString()) }
 
-    /** Первый запуск: профиль, текущий пробег и базовый список ТО (по желанию — «всё обслужено сейчас»). */
+    /** Первый запуск: профиль, текущий пробег и базовый список расходников вида (по желанию — «всё обслужено сейчас»). */
     fun setup(car: Car, km: Long, allServicedNow: Boolean) = write {
         putMeta("car", carToJson(car).toString())
         insert("odo", null, values("date" to today(), "km" to km, "source" to OdoSource.MANUAL))
         delete("items", null, null)
-        for (it in Defaults.items) {
+        for (it in car.kind.items) {
             insertItem(if (allServicedNow) it.copy(lastKm = km, lastDate = today()) else it)
         }
         putMeta("setup", "1")
@@ -157,11 +152,11 @@ class Repo(private val ctx: Context) {
         list.forEachIndexed { pos, it -> update("items", values("position" to pos), "_id=?", arrayOf(it.id.toString())) }
     }
 
-    /** Добавить к списку недостающие пункты из базового набора. */
+    /** Добавить к списку недостающие пункты из базового набора вида транспорта. */
     fun restoreDefaultItems() = write {
         val names = s.items.map { it.name }.toSet()
         var pos = (s.items.maxOfOrNull { it.position } ?: -1) + 1
-        for (it in Defaults.items) if (it.name !in names) insertItem(it.copy(position = pos++))
+        for (it in s.kind.items) if (it.name !in names) insertItem(it.copy(position = pos++))
     }
 
     // ---------- Журнал ----------
@@ -273,6 +268,7 @@ class Repo(private val ctx: Context) {
         put("name", c.name); put("make", c.make); put("model", c.model); put("year", c.year); put("vin", c.vin)
         put("plate", c.plate); put("engine", c.engine); put("fuel", c.fuel)
         c.purchaseDate?.let { put("purchaseDate", it) }; c.purchaseKm?.let { put("purchaseKm", it) }
+        put("kind", c.kind.name); put("kmPerMonth", c.kmPerMonth)
     }
 
     private fun carFromJson(s: String): Car = runCatching {
@@ -282,6 +278,8 @@ class Repo(private val ctx: Context) {
             o.optString("plate"), o.optString("engine"), o.optString("fuel"),
             if (o.has("purchaseDate")) o.getLong("purchaseDate") else null,
             if (o.has("purchaseKm")) o.getLong("purchaseKm") else null,
+            VehicleKind.of(o.optString("kind")) ?: VehicleKind.guess(o.optString("fuel")),
+            o.optInt("kmPerMonth", 0),
         )
     }.getOrDefault(Car())
 

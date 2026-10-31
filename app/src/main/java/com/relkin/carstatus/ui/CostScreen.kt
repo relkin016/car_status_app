@@ -41,6 +41,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.relkin.carstatus.data.CostCat
 import com.relkin.carstatus.data.CostReport
+import com.relkin.carstatus.data.Energy
+import com.relkin.carstatus.data.VehicleKind
 import com.relkin.carstatus.data.Costs
 import com.relkin.carstatus.util.Fmt
 import java.time.LocalDate
@@ -70,17 +72,17 @@ fun CostScreen() {
                 }
             }
             item { Hero(r) }
-            item { Breakdown(r) }
+            item { Breakdown(r, s.kind) }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Tile("Пройдено", Fmt.km(r.km), Modifier.weight(1f))
                     Tile("Потрачено", Fmt.money(r.total), Modifier.weight(1f))
                 }
             }
-            item {
+            if (s.kind.energy != Energy.NONE) item {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Tile("Расход", r.consumption?.let { Fmt.dec(it) + " л/100" } ?: "—", Modifier.weight(1f))
-                    Tile("Цена литра", r.pricePerLiter?.let { Fmt.money2(it) } ?: "—", Modifier.weight(1f))
+                    Tile("Расход", r.consumption?.let { Fmt.dec(it) + " ${s.kind.unit}/100" } ?: "—", Modifier.weight(1f))
+                    Tile(if (s.kind.energy == Energy.ELECTRIC) "Цена кВт·ч" else "Цена литра", r.pricePerLiter?.let { Fmt.money2(it) } ?: "—", Modifier.weight(1f))
                 }
             }
             if (r.byMonth.size > 1) {
@@ -102,7 +104,7 @@ fun CostScreen() {
             }
             item {
                 Text(
-                    "Цена километра = (топливо + ТО + запчасти + прочее) ÷ пройденные км за период. Пробег берётся из показаний одометра и записей.",
+                    "Цена километра = (${s.kind.energyLabel.lowercase()} + ТО + запчасти + прочее) ÷ пройденные км за период. Пробег берётся из показаний одометра и записей.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -142,7 +144,7 @@ private fun Stacked(v: Map<CostCat, Double>, total: Double, height: Int) {
 }
 
 @Composable
-private fun Breakdown(r: CostReport) {
+private fun Breakdown(r: CostReport, kind: VehicleKind) {
     val dc = LocalData.current
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -152,7 +154,7 @@ private fun Breakdown(r: CostReport) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Dot(dc.cat(c), 12.dp)
                     Spacer(Modifier.width(8.dp))
-                    Text(c.label, Modifier.weight(1f))
+                    Text(c.label(kind), Modifier.weight(1f))
                     Text(
                         (r.perKm(c)?.let { Fmt.money2(it) + "/км  " } ?: "") ,
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,

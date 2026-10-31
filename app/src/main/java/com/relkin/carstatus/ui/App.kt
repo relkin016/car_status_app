@@ -29,6 +29,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,6 +45,7 @@ import com.relkin.carstatus.data.Incident
 import com.relkin.carstatus.data.Item
 import com.relkin.carstatus.data.LogEntry
 import com.relkin.carstatus.data.Photo
+import com.relkin.carstatus.data.VehicleKind
 import com.relkin.carstatus.util.Fmt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -57,6 +59,7 @@ sealed interface Route {
     data object Photos : Route
     data object Car : Route
     data object Settings : Route
+    data object Garage : Route
     data object Odo : Route
     data class Report(val kind: ReportKind) : Route
 }
@@ -71,6 +74,8 @@ sealed interface Edit {
     data class BreakdownE(val b: Breakdown?) : Edit
     data class PhotoE(val photo: Photo) : Edit
     data object AddMenu : Edit
+    /** Быстрое переключение гаража и транспорта. */
+    data object Switch : Edit
 }
 
 class Ui(val app: CarApp, val scope: CoroutineScope, val snackbar: SnackbarHostState) {
@@ -84,19 +89,34 @@ class Ui(val app: CarApp, val scope: CoroutineScope, val snackbar: SnackbarHostS
 
     val repo get() = app.repo
     val prefs get() = app.prefs
+    val garage get() = app.garage
+
+    /** Перейти на другой транспорт: экраны прежнего закрываются. */
+    fun switchTo(vehicleId: Long) {
+        if (vehicleId == garage.s.current) return
+        stack.clear(); edit = null; tab = 0
+        garage.select(vehicleId)
+    }
+
+    /** Добавить транспорт в гараж — откроется экран настройки. */
+    fun addVehicle(garageId: Long) {
+        stack.clear(); edit = null; tab = 0
+        garage.addVehicle(garageId)
+    }
 }
 
 val LocalUi = staticCompositionLocalOf<Ui> { error("no ui") }
 
-private data class Tab(val title: String, val icon: ImageVector)
+private enum class Tab(val title: String, val icon: ImageVector) {
+    STATUS("Статус", Icons.Filled.Favorite),
+    JOURNAL("Журнал", Icons.AutoMirrored.Filled.MenuBook),
+    COSTS("Расходы", Icons.Filled.Payments),
+    OBD("OBD2", Icons.Filled.Bluetooth),
+    MORE("Ещё", Icons.Filled.Menu),
+}
 
-private val tabs = listOf(
-    Tab("Статус", Icons.Filled.Favorite),
-    Tab("Журнал", Icons.AutoMirrored.Filled.MenuBook),
-    Tab("Расходы", Icons.Filled.Payments),
-    Tab("OBD2", Icons.Filled.Bluetooth),
-    Tab("Ещё", Icons.Filled.Menu),
-)
+/** Вкладка OBD2 — только у транспорта с диагностическим разъёмом. */
+private fun tabsOf(kind: VehicleKind) = Tab.entries.filter { it != Tab.OBD || kind.hasObd }
 
 @Composable
 fun CarRoot(app: CarApp) {
@@ -104,6 +124,19 @@ fun CarRoot(app: CarApp) {
         val snackbar = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
         val ui = remember { Ui(app, scope, snackbar) }
+        val gs by app.garage.state.collectAsState()
+        val epoch by app.garage.epoch.collectAsState()
+        // смена транспорта (в т.ч. из уведомления) или восстановление копии — всё дерево экранов заново
+        key(gs.current, epoch) { VehicleRoot(app, ui) }
+    }
+}
+
+@Composable
+private fun VehicleRoot(app: CarApp, ui: Ui) {
+    run {
+        val snackbar = ui.snackbar
+        // экраны прежнего транспорта закрываются (до открытия пробега по уведомлению — эффекты идут по порядку)
+        LaunchedEffect(Unit) { ui.stack.clear(); ui.edit = null; ui.tab = 0 }
         val snap by app.repo.snap.collectAsState()
         val currency by app.prefs.currency.state.collectAsState()
         Fmt.currency = currency
@@ -124,8 +157,10 @@ fun CarRoot(app: CarApp) {
             Surface(Modifier.fillMaxSize()) {
                 if (!snap.setupDone) {
                     SetupScreen()
+                    EditDialogs()
                     return@Surface
                 }
+                val tabs = tabsOf(snap.kind)
                 Scaffold(
                     snackbarHost = { SnackbarHost(snackbar) },
                     bottomBar = {
@@ -140,7 +175,7 @@ fun CarRoot(app: CarApp) {
                     },
                 ) { pad ->
                     Box(Modifier.padding(bottom = if (ui.stack.isEmpty()) pad.calculateBottomPadding() else androidx.compose.ui.unit.Dp.Hairline)) {
-                        Tabs(ui)
+                        Tabs(ui, tabs)
                         ui.stack.lastOrNull()?.let { r ->
                             BackHandler { ui.pop() }
                             Surface(Modifier.fillMaxSize()) { RouteScreen(r) }
@@ -154,8 +189,9 @@ fun CarRoot(app: CarApp) {
 }
 
 @Composable
-private fun Tabs(ui: Ui) {
+private fun Tabs(ui: Ui, tabs: List<Tab>) {
     val swipe by ui.prefs.swipeNav.state.collectAsState()
+    if (ui.tab !in tabs.indices) ui.tab = 0
     val pager = rememberPagerState(initialPage = ui.tab) { tabs.size }
     // вкладка ← нижняя панель
     LaunchedEffect(ui.tab) { if (pager.currentPage != ui.tab) pager.animateScrollToPage(ui.tab) }
@@ -163,12 +199,12 @@ private fun Tabs(ui: Ui) {
     LaunchedEffect(pager.settledPage) { ui.tab = pager.settledPage }
     if (ui.tab != 0 && ui.stack.isEmpty()) BackHandler { ui.tab = 0 }
     HorizontalPager(pager, userScrollEnabled = swipe == 1, beyondViewportPageCount = 0, key = { it }) { page ->
-        when (page) {
-            0 -> StatusScreen()
-            1 -> JournalScreen()
-            2 -> CostScreen()
-            3 -> ObdScreen()
-            else -> MoreScreen()
+        when (tabs[page]) {
+            Tab.STATUS -> StatusScreen()
+            Tab.JOURNAL -> JournalScreen()
+            Tab.COSTS -> CostScreen()
+            Tab.OBD -> ObdScreen()
+            Tab.MORE -> MoreScreen()
         }
     }
 }
@@ -183,6 +219,7 @@ private fun RouteScreen(r: Route) {
         Route.Photos -> PhotosScreen()
         Route.Car -> CarScreen()
         Route.Settings -> SettingsScreen()
+        Route.Garage -> GarageScreen()
         Route.Odo -> OdoScreen()
         is Route.Report -> ReportScreen(r.kind)
     }

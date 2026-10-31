@@ -13,8 +13,14 @@ data class Car(
     val fuel: String = "",
     val purchaseDate: Long? = null,
     val purchaseKm: Long? = null,
+    val kind: VehicleKind = VehicleKind.PETROL,
+    /** Средний пробег в месяц, пока по истории его не посчитать (0 — по виду транспорта). */
+    val kmPerMonth: Int = 0,
 ) {
-    val title: String get() = name.ifBlank { listOf(make, model).filter { it.isNotBlank() }.joinToString(" ").ifBlank { "Мой автомобиль" } }
+    val title: String get() = name.ifBlank { listOf(make, model).filter { it.isNotBlank() }.joinToString(" ").ifBlank { kind.defaultTitle } }
+    /** Название с эмодзи вида — для списков и уведомлений. */
+    val label: String get() = "${kind.emoji} $title"
+    val kmPerMonthOrDefault: Int get() = kmPerMonth.takeIf { it > 0 } ?: kind.kmPerMonth
 }
 
 /** Источник показания одометра. */
@@ -154,6 +160,10 @@ data class Snapshot(
     }
 
     val lastOdoDate: Long? by lazy { readings.maxOfOrNull { it.first } }
+
+    val kind: VehicleKind get() = car.kind
+    /** Средний суточный пробег, пока его не посчитать по истории. */
+    val fallbackKmPerDay: Double get() = car.kmPerMonthOrDefault / 30.0
 
     fun item(id: Long?) = items.firstOrNull { it.id == id }
     fun photosOf(type: Int, id: Long) = photos.filter { it.ownerType == type && it.ownerId == id }

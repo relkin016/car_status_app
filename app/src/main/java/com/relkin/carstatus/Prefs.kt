@@ -50,8 +50,8 @@ class Prefs(ctx: Context) {
     /** Время ежедневной проверки, минуты от начала суток. */
     val checkTime = IntPref("check_time", 10 * 60, true)
 
-    /** Средний пробег в месяц, пока по истории его не посчитать. */
-    val kmPerMonth = IntPref("km_per_month", 1200)
+    /** Версия 0.1: средний пробег в месяц (теперь — в профиле каждого транспорта). Переносится в первый транспорт. */
+    val legacyKmPerMonth: Int? get() = if (sp.contains("km_per_month")) sp.getInt("km_per_month", 0) else null
 
     /** Включать стоимость в историю для покупателя. */
     val reportCosts = IntPref("report_costs", 0)
@@ -59,15 +59,18 @@ class Prefs(ctx: Context) {
     /** OBD2: адрес адаптера и чтение пробега при открытии вкладки. */
     val obdAddress = StrPref("obd_address", "")
     val obdAutoOdo = IntPref("obd_auto_odo", 1)
-    /** Базовая точка для пробега через PID 0x31 (дистанция после сброса ошибок): "км_одометра:дистанция". */
-    val obdBase = StrPref("obd_base", "")
+    /** Базовая точка для пробега через PID 0x31 (дистанция после сброса ошибок): "км_одометра:дистанция" — у каждого транспорта своя. */
+    fun obdBase(vehicle: Long): String = sp.getString(perVehicle("obd_base", vehicle), "") ?: ""
+    fun setObdBase(vehicle: Long, v: String) = sp.edit().putString(perVehicle("obd_base", vehicle), v).apply()
+
+    /** Ключ настройки транспорта; у первого — без суффикса, как в 0.1. */
+    private fun perVehicle(key: String, vehicle: Long) = if (vehicle == 1L) key else "${key}_$vehicle"
 
     /** Что уже показано, чтобы не повторяться: ключи уведомлений. */
     var notified: Set<String>
         get() = sp.getStringSet("notified", emptySet())!!.toSet()
         set(v) = sp.edit().putStringSet("notified", v).apply()
 
-    var lastOdoRemind: Long
-        get() = sp.getLong("last_odo_remind", 0)
-        set(v) = sp.edit().putLong("last_odo_remind", v).apply()
+    fun lastOdoRemind(vehicle: Long): Long = sp.getLong(perVehicle("last_odo_remind", vehicle), 0)
+    fun setLastOdoRemind(vehicle: Long, day: Long) = sp.edit().putLong(perVehicle("last_odo_remind", vehicle), day).apply()
 }

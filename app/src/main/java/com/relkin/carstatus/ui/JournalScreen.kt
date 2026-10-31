@@ -47,7 +47,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.relkin.carstatus.data.Energy
 import com.relkin.carstatus.data.LogType
+import com.relkin.carstatus.data.VehicleKind
 import com.relkin.carstatus.data.Odo
 import com.relkin.carstatus.data.OdoSource
 import com.relkin.carstatus.data.Photo
@@ -60,6 +62,8 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 private enum class JFilter(val label: String) { ALL("Все"), SERVICE("ТО"), FUEL("Заправки"), COST("Расходы"), DIARY("Дневник"), ODO("Пробег") }
+
+private fun JFilter.label(kind: VehicleKind) = if (this == JFilter.FUEL && kind.energy == Energy.ELECTRIC) "Зарядки" else label
 
 private data class JRow(
     val key: String,
@@ -79,7 +83,7 @@ private fun rows(s: Snapshot): List<JRow> {
     val out = ArrayList<JRow>()
     for (e in s.log) {
         val (icon, f) = when (e.type) {
-            LogType.FUEL -> Icons.Filled.LocalGasStation to JFilter.FUEL
+            LogType.FUEL -> energyIcon(s.kind) to JFilter.FUEL
             LogType.SERVICE -> Icons.Filled.Build to JFilter.SERVICE
             LogType.PART -> Icons.Filled.Inventory2 to JFilter.COST
             else -> Icons.Filled.ReceiptLong to JFilter.COST
@@ -122,7 +126,8 @@ fun JournalScreen() {
     ) { pad ->
         Column(Modifier.fillMaxSize().padding(pad)) {
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                JFilter.entries.forEach { f -> FilterChip(filter == f, { filter = f }, label = { Text(f.label) }) }
+                JFilter.entries.filter { it != JFilter.FUEL || s.kind.energy != Energy.NONE }
+                    .forEach { f -> FilterChip(filter == f, { filter = f }, label = { Text(f.label(s.kind)) }) }
             }
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 88.dp)) {
                 if (list.isEmpty()) item { Empty("Здесь появятся заправки, обслуживание, расходы, записи дневника и фото") }

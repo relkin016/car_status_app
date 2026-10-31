@@ -45,7 +45,7 @@ sealed interface OdoRead {
 data class BtDevice(val name: String, val address: String)
 
 /** Одно подключение на всё приложение: живёт, пока открыта программа, а не вкладка. */
-class Obd(private val ctx: Context, private val prefs: Prefs) {
+class Obd(private val ctx: Context, private val prefs: Prefs, private val vehicle: () -> Long) {
     private val _state = MutableStateFlow<ObdState>(ObdState.Off)
     val state: StateFlow<ObdState> get() = _state
     private var elm: Elm327? = null
@@ -103,7 +103,7 @@ class Obd(private val ctx: Context, private val prefs: Prefs) {
     suspend fun clearDtc(currentKm: Long): Boolean = use {
         val ok = it.clearDtc()
         // Сброс ошибок обнуляет PID 0x31 — база для оценки пробега начинается заново
-        if (ok) prefs.obdBase.set("$currentKm:0")
+        if (ok) prefs.setObdBase(vehicle(), "$currentKm:0")
         ok
     }
 
@@ -130,12 +130,12 @@ class Obd(private val ctx: Context, private val prefs: Prefs) {
             if (km > 0) return@use OdoRead.Odometer(km)
         }
         val dist = e.pid("31")?.takeIf { it.size >= 2 }?.let { (it[0] * 256 + it[1]).toLong() } ?: return@use OdoRead.Unsupported
-        val base = prefs.obdBase.value.split(':').mapNotNull { it.toLongOrNull() }
+        val base = prefs.obdBase(vehicle()).split(':').mapNotNull { it.toLongOrNull() }
         if (base.size == 2 && dist >= base[1]) {
             val km = base[0] + (dist - base[1])
             if (km >= currentKm) return@use OdoRead.Estimated(km)
         }
-        prefs.obdBase.set("$currentKm:$dist")
+        prefs.setObdBase(vehicle(), "$currentKm:$dist")
         OdoRead.BaseSet
     }
 

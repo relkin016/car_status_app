@@ -8,6 +8,7 @@ import android.database.sqlite.SQLiteOpenHelper
 
 object Schema {
     const val VERSION = 1
+    /** Файл базы первого транспорта (с версии 0.1); у остальных — vehicle_<id>.db. */
     const val NAME = "car.db"
 
     val CREATE = listOf(
@@ -29,7 +30,7 @@ object Schema {
     val REQUIRED = setOf("meta", "odo", "items", "log")
 }
 
-class DbHelper(ctx: Context) : SQLiteOpenHelper(ctx, Schema.NAME, null, Schema.VERSION) {
+class DbHelper(ctx: Context, name: String) : SQLiteOpenHelper(ctx, name, null, Schema.VERSION) {
     init {
         // Без WAL: файл базы всегда целостен и его можно копировать как резервную копию.
         setWriteAheadLoggingEnabled(false)

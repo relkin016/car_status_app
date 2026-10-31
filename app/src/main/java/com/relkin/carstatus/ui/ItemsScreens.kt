@@ -49,6 +49,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.relkin.carstatus.data.Car
 import com.relkin.carstatus.data.Defaults
+import com.relkin.carstatus.data.VehicleKind
 import com.relkin.carstatus.data.Health
 import com.relkin.carstatus.data.Item
 import com.relkin.carstatus.data.LogType
@@ -150,9 +151,8 @@ fun ItemEditDialog(item: Item, close: () -> Unit) {
 fun ItemDetailScreen(id: Long) {
     val ui = LocalUi.current
     val s by ui.repo.snap.collectAsState()
-    val kmMonth by ui.prefs.kmPerMonth.state.collectAsState()
     val item = s.item(id) ?: run { androidx.compose.runtime.LaunchedEffect(Unit) { ui.pop() }; return }
-    val (rate, _) = remember(s, kmMonth) { Health.kmPerDay(s, kmMonth / 30.0) }
+    val (rate, _) = remember(s) { Health.kmPerDay(s, s.fallbackKmPerDay) }
     val ih = Health.item(item, s.currentKm, rate)
     var edit by remember { mutableStateOf(false) }
     val history = s.log.filter { it.itemId == id }
@@ -197,41 +197,66 @@ fun ItemDetailScreen(id: Long) {
     if (edit) ItemEditDialog(item) { edit = false }
 }
 
-/** Первый запуск: профиль авто, текущий пробег, базовый список ТО. */
+/** Выбор вида транспорта: плитки с эмодзи. */
+@Composable
+fun KindPicker(kind: VehicleKind, onPick: (VehicleKind) -> Unit) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        VehicleKind.entries.forEach { k ->
+            FilterChip(kind == k, { onPick(k) }, label = { Text("${k.emoji} ${k.label}") })
+        }
+    }
+}
+
+/** Первичная настройка транспорта: вид, профиль, текущий пробег, базовый список расходников. */
 @Composable
 fun SetupScreen() {
     val ui = LocalUi.current
+    val gs by ui.garage.state.collectAsState()
+    var kind by remember { mutableStateOf(VehicleKind.PETROL) }
+    var name by remember { mutableStateOf("") }
     var make by remember { mutableStateOf("") }
     var model by remember { mutableStateOf("") }
     var year by remember { mutableStateOf("") }
     var km by remember { mutableStateOf("") }
     var serviced by remember { mutableStateOf(true) }
     val kmV = parseKm(km)
+    // настроенный транспорт уже есть — можно отменить добавление
+    val others = gs.vehicles.filter { it.id != gs.current && ui.garage.repo(it.id).s.setupDone }
+    val first = others.isEmpty()
+    val defaults = kind.items
     androidx.compose.material3.Scaffold { pad ->
         Column(
             Modifier.fillMaxSize().padding(pad).padding(24.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("🚗 Авто·Статус", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            Text(if (first) "🚗 Авто·Статус" else "Новый транспорт", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Text(
-                "Всё хранится только на телефоне: без аккаунтов и интернета. Расскажите о машине — и приложение начнёт следить за её «здоровьем».",
+                if (first) "Всё хранится только на телефоне: без аккаунтов и интернета. Расскажите о транспорте — и приложение начнёт следить за его «здоровьем». Позже можно добавить ещё транспорт и гаражи."
+                else "Гараж «${gs.currentGarage?.name.orEmpty()}». Выберите вид — от него зависят расходники, единицы и квесты.",
                 style = MaterialTheme.typography.bodyMedium,
             )
+            Text("Вид транспорта", style = MaterialTheme.typography.labelLarge)
+            KindPicker(kind) { kind = it }
+            OutlinedTextField(name, { name = it }, label = { Text("Название (необязательно)") }, placeholder = { Text(kind.defaultTitle) }, singleLine = true, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(make, { make = it }, label = { Text("Марка") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(model, { model = it }, label = { Text("Модель") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(year, { year = it }, label = { Text("Год выпуска") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            NumField(km, { km = it }, "Текущий пробег", suffix = "км", decimal = false)
+            NumField(km, { km = it }, "Текущий пробег", suffix = "км", decimal = false, hint = if (kind.isCar || kind == VehicleKind.MOTO) null else "Если нет одометра — по велокомпьютеру или приложению; можно 0")
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { serviced = !serviced }) {
                 Checkbox(serviced, { serviced = it })
                 Text("Считать, что всё обслужено сейчас (поправите потом по каждому пункту)")
             }
             Spacer(Modifier.height(8.dp))
             Button(
-                onClick = { ui.repo.setup(Car(make = make.trim(), model = model.trim(), year = year.trim()), kmV!!, serviced) },
+                onClick = { ui.repo.setup(Car(name = name.trim(), make = make.trim(), model = model.trim(), year = year.trim(), kind = kind), kmV!!, serviced) },
                 enabled = kmV != null, modifier = Modifier.fillMaxWidth(),
             ) { Text("Начать") }
+            if (!first) OutlinedButton(
+                onClick = { ui.garage.deleteVehicle(gs.current) },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("Отмена") }
             Text(
-                "В список ТО сразу попадут ${Defaults.items.size} базовых пунктов: масло, фильтры, тормоза, жидкости, ремни… Его можно редактировать.",
+                "В список сразу попадут ${defaults.size} расходников и узлов: " + defaults.take(4).joinToString { it.name.lowercase() } + "… Его можно редактировать.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }

@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CarCrash
 import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.EvStation
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.ReceiptLong
@@ -47,6 +48,8 @@ import com.relkin.carstatus.data.LogType
 import com.relkin.carstatus.data.OdoSource
 import com.relkin.carstatus.data.Photo
 import com.relkin.carstatus.data.PhotoOwner
+import com.relkin.carstatus.data.Energy
+import com.relkin.carstatus.data.VehicleKind
 import com.relkin.carstatus.util.Fmt
 import java.io.File
 import java.time.Instant
@@ -61,6 +64,7 @@ fun EditDialogs() {
     when (val e = ui.edit) {
         null -> {}
         Edit.AddMenu -> AddMenu(close)
+        Edit.Switch -> SwitchDialog(close)
         Edit.Odo -> OdoDialog(close)
         is Edit.Log -> LogDialog(e, close)
         is Edit.IncidentE -> IncidentDialog(e.incident, close)
@@ -69,13 +73,20 @@ fun EditDialogs() {
     }
 }
 
+/** Название типа записи с учётом вида транспорта: «Топливо» или «Зарядка». */
+fun logLabel(type: Int, kind: VehicleKind) = if (type == LogType.FUEL) kind.refuel else LogType.label(type)
+
+fun energyIcon(kind: VehicleKind): ImageVector =
+    if (kind.energy == Energy.ELECTRIC) Icons.Filled.EvStation else Icons.Filled.LocalGasStation
+
 @Composable
 private fun AddMenu(close: () -> Unit) {
     val ui = LocalUi.current
     fun go(e: Edit) { ui.edit = e }
-    val rows = listOf<Triple<ImageVector, String, () -> Unit>>(
+    val kind = ui.repo.s.kind
+    val rows = listOfNotNull<Triple<ImageVector, String, () -> Unit>>(
         Triple(Icons.Filled.Speed, "Пробег") { go(Edit.Odo) },
-        Triple(Icons.Filled.LocalGasStation, "Заправка") { go(Edit.Log(null, LogType.FUEL)) },
+        if (kind.energy == Energy.NONE) null else Triple(energyIcon(kind), kind.refuel) { go(Edit.Log(null, LogType.FUEL)) },
         Triple(Icons.Filled.Build, "Обслуживание (ТО)") { go(Edit.Log(null, LogType.SERVICE)) },
         Triple(Icons.Filled.Inventory2, "Запчасти") { go(Edit.Log(null, LogType.PART)) },
         Triple(Icons.Filled.ReceiptLong, "Прочий расход") { go(Edit.Log(null, LogType.OTHER)) },
@@ -185,8 +196,9 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
     val valid = (km.isBlank() || kmVal != null) && amountVal != null && partsVal != null && litersVal != null &&
         (type != LogType.SERVICE || itemId != null || title.isNotBlank())
 
+    val kind = s.kind
     FormDialog(
-        title = (if (e == null) "Новая запись: " else "") + LogType.label(type),
+        title = (if (e == null) "Новая запись: " else "") + logLabel(type, kind),
         onDismiss = dismiss,
         confirmEnabled = valid,
         onConfirm = {
@@ -203,7 +215,10 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
         extra = if (e != null) { { TextButton(onClick = { confirmDelete = true }) { Text("Удалить") } } } else null,
     ) {
         if (e == null) Segmented(
-            listOf(LogType.FUEL to "Топл.", LogType.SERVICE to "ТО", LogType.PART to "Зап.", LogType.OTHER to "Проч."),
+            listOfNotNull(
+                if (kind.energy == Energy.NONE) null else LogType.FUEL to (if (kind.energy == Energy.ELECTRIC) "Заряд" else "Топл."),
+                LogType.SERVICE to "ТО", LogType.PART to "Зап.", LogType.OTHER to "Проч.",
+            ),
             type, { type = it },
         )
         DateField(date, { date = it })
@@ -221,17 +236,18 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
         }
         OutlinedTextField(
             title, { title = it }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-            label = { Text(when (type) { LogType.FUEL -> "АЗС / марка топлива"; LogType.OTHER -> "Что (мойка, страховка, штраф…)"; else -> "Описание работ / деталей" }) },
+            label = { Text(when (type) { LogType.FUEL -> if (kind.energy == Energy.ELECTRIC) "Где заряжали (дом, станция)" else "АЗС / марка топлива"; LogType.OTHER -> "Что (мойка, страховка, штраф…)"; else -> "Описание работ / деталей" }) },
         )
         when (type) {
             LogType.FUEL -> {
-                NumField(liters, { liters = it }, "Литры", suffix = "л")
+                val ev = kind.energy == Energy.ELECTRIC
+                NumField(liters, { liters = it }, if (ev) "Энергия" else "Литры", suffix = kind.unit)
                 NumField(
                     amount, { amount = it }, "Сумма", suffix = Fmt.currency,
-                    hint = if ((litersVal ?: 0.0) > 0 && (amountVal ?: 0.0) > 0) "${Fmt.money2(amountVal!! / litersVal!!)}/л" else null,
+                    hint = if ((litersVal ?: 0.0) > 0 && (amountVal ?: 0.0) > 0) "${Fmt.money2(amountVal!! / litersVal!!)}/${kind.unit}" else null,
                 )
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { full = !full }) {
-                    Checkbox(full, { full = it }); Text("Полный бак (для расчёта расхода)")
+                    Checkbox(full, { full = it }); Text(if (ev) "До 100% (для расчёта расхода)" else "Полный бак (для расчёта расхода)")
                 }
             }
             LogType.SERVICE -> {

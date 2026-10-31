@@ -27,6 +27,10 @@ import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material.icons.filled.Air
 import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Cable
+import androidx.compose.material.icons.filled.Hardware
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Power
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Description
@@ -96,6 +100,10 @@ fun itemIcon(key: String): ImageVector = when (key) {
     "doc" -> Icons.Filled.Description
     "light" -> Icons.Filled.WbIncandescent
     "engine" -> Icons.Filled.Settings
+    "chain" -> Icons.Filled.Link
+    "bolt" -> Icons.Filled.Hardware
+    "plug" -> Icons.Filled.Power
+    "cable" -> Icons.Filled.Cable
     else -> Icons.Filled.Build
 }
 
@@ -140,7 +148,7 @@ fun SubScreen(
     )
 }
 
-/** Экран вкладки: нижние отступы уже даёт панель вкладок. */
+/** Экран вкладки: нижние отступы уже даёт панель вкладок; под заголовком — текущий транспорт (нажать — сменить). */
 @Composable
 fun TabScaffold(
     title: String,
@@ -149,7 +157,17 @@ fun TabScaffold(
     content: @Composable (PaddingValues) -> Unit,
 ) {
     Scaffold(
-        topBar = { TopAppBar(title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) }, actions = actions) },
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        VehicleTitle()
+                    }
+                },
+                actions = actions,
+            )
+        },
         floatingActionButton = fab,
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0),
         content = content,

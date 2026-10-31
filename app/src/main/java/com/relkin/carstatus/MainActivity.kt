@@ -31,10 +31,18 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handle(intent: Intent?) {
-        val open = intent?.getStringExtra(EXTRA_OPEN) ?: return
+        intent ?: return
+        val app = application as CarApp
+        // уведомление о другом транспорте (в т.ч. из другого гаража) — переключиться на него
+        val vehicle = intent.getLongExtra(Reminders.EXTRA_VEHICLE, 0)
+        if (vehicle != 0L) {
+            intent.removeExtra(Reminders.EXTRA_VEHICLE)
+            app.garage.select(vehicle)
+        }
+        val open = intent.getStringExtra(EXTRA_OPEN) ?: return
         intent.removeExtra(EXTRA_OPEN)
         Reminders.dismiss(this, intent.getIntExtra(Reminders.EXTRA_NOTIF, 0))
-        (application as CarApp).pendingOpen.value = open
+        app.pendingOpen.value = open
     }
 
     companion object {

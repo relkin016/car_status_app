@@ -4,7 +4,12 @@ import java.time.LocalDate
 import java.time.YearMonth
 
 /** Категории «реальной цены километра». */
-enum class CostCat(val label: String) { FUEL("Топливо"), SERVICE("ТО / работы"), PARTS("Запчасти"), OTHER("Прочее") }
+enum class CostCat(val label: String) {
+    FUEL("Топливо"), SERVICE("ТО / работы"), PARTS("Запчасти"), OTHER("Прочее");
+
+    /** «Топливо» у электротранспорта — «Электричество». */
+    fun label(kind: VehicleKind) = if (this == FUEL) kind.energyLabel else label
+}
 
 data class CostReport(
     val from: Long?,
@@ -17,7 +22,7 @@ data class CostReport(
     val startKm: Long?,
     val endKm: Long?,
     val liters: Double,
-    /** л/100 км по методу полных баков, если хватает данных. */
+    /** л (или кВт·ч) на 100 км по методу полных баков, если хватает данных. */
     val consumption: Double?,
     val pricePerLiter: Double?,
     val byMonth: List<Pair<YearMonth, Map<CostCat, Double>>>,

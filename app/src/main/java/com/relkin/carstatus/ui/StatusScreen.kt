@@ -47,12 +47,11 @@ import com.relkin.carstatus.util.Fmt
 fun StatusScreen() {
     val ui = LocalUi.current
     val s by ui.repo.snap.collectAsState()
-    val kmMonth by ui.prefs.kmPerMonth.state.collectAsState()
     val threshold by ui.prefs.hpThreshold.state.collectAsState()
-    val h = remember(s, kmMonth) { Health.of(s, kmMonth / 30.0) }
+    val h = remember(s) { Health.of(s, s.fallbackKmPerDay) }
     val dc = LocalData.current
     TabScaffold(
-        s.car.title,
+        "Статус",
         actions = { IconButton(onClick = { ui.push(Route.Items) }) { Icon(Icons.Filled.Tune, "Пункты ТО") } },
         fab = { FloatingActionButton(onClick = { ui.edit = Edit.AddMenu }) { Icon(Icons.Filled.Add, "Добавить") } },
     ) { pad ->
@@ -64,7 +63,7 @@ fun StatusScreen() {
                             Icon(Icons.Filled.Favorite, null, tint = dc.hp(h.overall), modifier = Modifier.size(36.dp))
                             Spacer(Modifier.size(12.dp))
                             Column(Modifier.weight(1f)) {
-                                Text("Здоровье авто", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(s.kind.healthOf, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text(
                                     h.overall?.let { "${(it * 100).toInt()} HP" } ?: "нет данных",
                                     style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold,
@@ -97,7 +96,7 @@ fun StatusScreen() {
                     }
                 }
             }
-            Quests.active().forEach { q ->
+            Quests.active(s.kind).forEach { q ->
                 val season = q.season()
                 val done = q.steps.count { q.stepKey(season, it) in s.questDone }
                 item(key = "quest_${q.key}") {
@@ -107,12 +106,12 @@ fun StatusScreen() {
                             Spacer(Modifier.height(8.dp))
                             LinearProgressIndicator(progress = { done.toFloat() / q.steps.size }, modifier = Modifier.fillMaxWidth().height(8.dp))
                             Spacer(Modifier.height(4.dp))
-                            Text(if (done == q.steps.size) "Выполнено! Машина готова к сезону" else "$done из ${q.steps.size} · дальше: ${q.steps.first { q.stepKey(season, it) !in s.questDone }.title}", style = MaterialTheme.typography.bodySmall)
+                            Text(if (done == q.steps.size) "Выполнено! Всё готово к сезону" else "$done из ${q.steps.size} · дальше: ${q.steps.first { q.stepKey(season, it) !in s.questDone }.title}", style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
             }
-            Tips.active().firstOrNull()?.let { t ->
+            Tips.active(s.kind).firstOrNull()?.let { t ->
                 item(key = "tip") {
                     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(MaterialTheme.colorScheme.tertiaryContainer)) {
                         Column(Modifier.padding(16.dp)) {
