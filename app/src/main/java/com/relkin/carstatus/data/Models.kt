@@ -197,19 +197,13 @@ data class Snapshot(
     val lastOdoDate: Long? by lazy { readings.maxOfOrNull { it.first } }
 
     /**
-     * Пробег на дату по показаниям: точное показание этого дня, иначе линейно между соседними.
-     * До первого показания — первое, после последнего — текущий пробег.
+     * Пробег на дату — как есть из таблицы показаний, без расчётов:
+     * последнее показание на эту дату или раньше; если раньше нет — самое первое.
      */
     fun kmAt(date: Long, exceptLog: Long = 0): Long {
-        // При правке записи её собственный пробег в расчёт не берём
-        val own = log.firstOrNull { it.id == exceptLog && it.km != null }
-        val r = if (own == null) readings else readings.toMutableList().apply { remove(own.date to own.km!!) }
-        if (r.isEmpty()) return own?.km ?: currentKm
-        r.filter { it.first == date }.maxOfOrNull { it.second }?.let { return it }
-        val before = r.lastOrNull { it.first < date } ?: return r.first().second
-        val after = r.firstOrNull { it.first > date } ?: return if (own == null) currentKm else r.maxOf { it.second }
-        val k = (date - before.first).toDouble() / (after.first - before.first)
-        return before.second + Math.round((after.second - before.second) * k)
+        val r = odo.map { it.date to it.km }.sortedWith(compareBy({ it.first }, { it.second }))
+        if (r.isEmpty()) return log.firstOrNull { it.id == exceptLog }?.km ?: currentKm
+        return (r.lastOrNull { it.first <= date } ?: r.first()).second
     }
 
     val kind: VehicleKind get() = car.kind
