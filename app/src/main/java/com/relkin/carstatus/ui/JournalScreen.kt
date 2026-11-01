@@ -58,13 +58,18 @@ import com.relkin.carstatus.data.PhotoOwner
 import com.relkin.carstatus.data.Reports
 import com.relkin.carstatus.data.Snapshot
 import com.relkin.carstatus.util.Fmt
+import com.relkin.carstatus.util.tr
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
-private enum class JFilter(val label: String) { ALL("Все"), SERVICE("ТО и работы"), FUEL("Заправки"), COST("Расходы"), DIARY("Дневник"), ODO("Пробег") }
+private enum class JFilter(private val ru: String, private val uk: String) {
+    ALL("Все", "Усі"), SERVICE("ТО и работы", "ТО й роботи"), FUEL("Заправки", "Заправки"), COST("Расходы", "Витрати"), DIARY("Дневник", "Щоденник"), ODO("Пробег", "Пробіг");
 
-private fun JFilter.label(kind: VehicleKind) = if (this == JFilter.FUEL && kind.energy == Energy.ELECTRIC) "Зарядки" else label
+    val label: String get() = tr(ru, uk)
+}
+
+private fun JFilter.label(kind: VehicleKind) = if (this == JFilter.FUEL && kind.energy == Energy.ELECTRIC) tr("Зарядки", "Зарядки") else label
 
 private data class JRow(
     val key: String,
@@ -103,10 +108,10 @@ private fun rows(s: Snapshot): List<JRow> {
     }
     for (p in s.photos.filter { it.ownerType == PhotoOwner.NONE }) {
         val d = Instant.ofEpochMilli(p.time).atZone(zone).toLocalDate()
-        out += JRow("p${p.id}", p.time, d, Icons.Filled.PhotoCamera, p.caption.ifBlank { "Фото" }, p.km?.let { Fmt.km(it) } ?: "", null, listOf(p), JFilter.DIARY) { it.edit = Edit.PhotoE(p) }
+        out += JRow("p${p.id}", p.time, d, Icons.Filled.PhotoCamera, p.caption.ifBlank { tr("Фото", "Фото") }, p.km?.let { Fmt.km(it) } ?: "", null, listOf(p), JFilter.DIARY) { it.edit = Edit.PhotoE(p) }
     }
     for (o in s.odo) {
-        out += JRow("o${o.id}", o.date * 86_400_000L, LocalDate.ofEpochDay(o.date), Icons.Filled.Speed, "Пробег ${Fmt.km(o.km)}", OdoSource.label(o.source), null, emptyList(), JFilter.ODO) {
+        out += JRow("o${o.id}", o.date * 86_400_000L, LocalDate.ofEpochDay(o.date), Icons.Filled.Speed, tr("Пробег ${Fmt.km(o.km)}", "Пробіг ${Fmt.km(o.km)}"), OdoSource.label(o.source), null, emptyList(), JFilter.ODO) {
             it.push(Route.Odo)
         }
     }
@@ -122,9 +127,9 @@ fun JournalScreen() {
     val list = all.filter { if (filter == JFilter.ALL) it.filter != JFilter.ODO else it.filter == filter }
     var view by remember { mutableStateOf<Photo?>(null) }
     TabScaffold(
-        "Журнал",
-        actions = { IconButton(onClick = { ui.push(Route.Photos) }) { Icon(Icons.Filled.PhotoLibrary, "Фото-журнал") } },
-        fab = { FloatingActionButton(onClick = { ui.edit = Edit.AddMenu }) { Icon(Icons.Filled.Add, "Добавить") } },
+        tr("Журнал", "Журнал"),
+        actions = { IconButton(onClick = { ui.push(Route.Photos) }) { Icon(Icons.Filled.PhotoLibrary, tr("Фото-журнал", "Фотожурнал")) } },
+        fab = { FloatingActionButton(onClick = { ui.edit = Edit.AddMenu }) { Icon(Icons.Filled.Add, tr("Добавить", "Додати")) } },
     ) { pad ->
         Column(Modifier.fillMaxSize().padding(pad)) {
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -132,7 +137,7 @@ fun JournalScreen() {
                     .forEach { f -> FilterChip(filter == f, { filter = f }, label = { Text(f.label(s.kind)) }) }
             }
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 88.dp)) {
-                if (list.isEmpty()) item { Empty("Здесь появятся заправки, обслуживание, расходы, записи дневника и фото") }
+                if (list.isEmpty()) item { Empty(tr("Здесь появятся заправки, обслуживание, расходы, записи дневника и фото", "Тут з'являться заправки, обслуговування, витрати, записи щоденника й фото")) }
                 var month: LocalDate? = null
                 for (r in list) {
                     val m = r.date.withDayOfMonth(1)
@@ -177,13 +182,13 @@ fun PhotosScreen() {
         ui.repo.addPhoto(Photo(time = System.currentTimeMillis(), km = ui.repo.s.currentKm, file = file))
     }
     SubScreen(
-        "Фото-журнал", ui::pop,
+        tr("Фото-журнал", "Фотожурнал"), ui::pop,
         actions = {
-            IconButton(onClick = adder.gallery) { Icon(Icons.Filled.AddPhotoAlternate, "Из галереи") }
+            IconButton(onClick = adder.gallery) { Icon(Icons.Filled.AddPhotoAlternate, tr("Из галереи", "З галереї")) }
         },
-        fab = { FloatingActionButton(onClick = adder.camera) { Icon(Icons.Filled.PhotoCamera, "Снять") } },
+        fab = { FloatingActionButton(onClick = adder.camera) { Icon(Icons.Filled.PhotoCamera, tr("Снять", "Зняти")) } },
     ) { pad ->
-        if (s.photos.isEmpty()) Column(Modifier.padding(pad)) { Empty("Снимайте одометр, повреждения, чеки, состояние шин — у каждого фото сохранятся дата и пробег") }
+        if (s.photos.isEmpty()) Column(Modifier.padding(pad)) { Empty(tr("Снимайте одометр, повреждения, чеки, состояние шин — у каждого фото сохранятся дата и пробег", "Фотографуйте одометр, пошкодження, чеки, стан шин — у кожного фото збережуться дата й пробіг")) }
         else LazyVerticalGrid(
             GridCells.Adaptive(110.dp), Modifier.fillMaxSize().padding(pad),
             contentPadding = PaddingValues(8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -208,17 +213,17 @@ fun OdoScreen() {
     val ui = LocalUi.current
     val s by ui.repo.snap.collectAsState()
     var del by remember { mutableStateOf<Odo?>(null) }
-    SubScreen("Показания одометра", ui::pop, fab = { FloatingActionButton(onClick = { ui.edit = Edit.Odo }) { Icon(Icons.Filled.Add, "Добавить") } }) { pad ->
+    SubScreen(tr("Показания одометра", "Показники одометра"), ui::pop, fab = { FloatingActionButton(onClick = { ui.edit = Edit.Odo }) { Icon(Icons.Filled.Add, tr("Добавить", "Додати")) } }) { pad ->
         LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(bottom = 88.dp)) {
             items(s.odo.reversed(), key = { it.id }) { o ->
                 ListItem(
                     headlineContent = { Text(Fmt.km(o.km)) },
                     supportingContent = { Text(Fmt.day(o.date) + " · " + OdoSource.label(o.source)) },
-                    trailingContent = { IconButton(onClick = { del = o }) { Icon(Icons.Filled.Delete, "Удалить") } },
+                    trailingContent = { IconButton(onClick = { del = o }) { Icon(Icons.Filled.Delete, tr("Удалить", "Видалити")) } },
                 )
                 HorizontalDivider()
             }
         }
     }
-    del?.let { o -> ConfirmDialog("Удалить показание?", Fmt.km(o.km) + " от " + Fmt.day(o.date), onDismiss = { del = null }) { ui.repo.deleteOdo(o.id) } }
+    del?.let { o -> ConfirmDialog(tr("Удалить показание?", "Видалити показник?"), Fmt.km(o.km) + tr(" от ", " від ") + Fmt.day(o.date), onDismiss = { del = null }) { ui.repo.deleteOdo(o.id) } }
 }

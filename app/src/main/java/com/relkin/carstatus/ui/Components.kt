@@ -80,6 +80,7 @@ import androidx.compose.ui.unit.dp
 import com.relkin.carstatus.notify.Mode
 import com.relkin.carstatus.util.Calc
 import com.relkin.carstatus.util.Fmt
+import com.relkin.carstatus.util.tr
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -139,7 +140,7 @@ fun SubScreen(
         topBar = {
             TopAppBar(
                 title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Назад") } },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, tr("Назад", "Назад")) } },
                 actions = actions,
             )
         },
@@ -199,9 +200,9 @@ fun NumField(
         onValueChange = { onChange(it.replace(',', '.')) },
         label = { Text(label) },
         suffix = suffix.takeIf { it.isNotEmpty() }?.let { { Text(it) } },
-        trailingIcon = { IconButton(onClick = { calc = true }) { Icon(Icons.Filled.Calculate, "Калькулятор") } },
+        trailingIcon = { IconButton(onClick = { calc = true }) { Icon(Icons.Filled.Calculate, tr("Калькулятор", "Калькулятор")) } },
         supportingText = if (Calc.isExpression(value)) {
-            { Text("= " + (Calc.eval(value)?.let { fmtNum(it, decimal) } ?: "ошибка в выражении")) }
+            { Text("= " + (Calc.eval(value)?.let { fmtNum(it, decimal) } ?: tr("ошибка в выражении", "помилка у виразі"))) }
         } else hint?.let { { Text(it) } },
         keyboardOptions = KeyboardOptions(keyboardType = if (decimal) KeyboardType.Decimal else KeyboardType.Number),
         singleLine = true,
@@ -242,7 +243,7 @@ fun CalculatorDialog(initial: String, decimal: Boolean, onDismiss: () -> Unit, o
     )
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Калькулятор") },
+        title = { Text(tr("Калькулятор", "Калькулятор")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
@@ -262,7 +263,7 @@ fun CalculatorDialog(initial: String, decimal: Boolean, onDismiss: () -> Unit, o
                                 modifier = Modifier.weight(1f).aspectRatio(1.3f),
                                 contentPadding = PaddingValues(0.dp),
                             ) {
-                                if (k == "⌫") Icon(Icons.AutoMirrored.Filled.Backspace, "Стереть")
+                                if (k == "⌫") Icon(Icons.AutoMirrored.Filled.Backspace, tr("Стереть", "Стерти"))
                                 else Text(k, style = MaterialTheme.typography.titleLarge)
                             }
                         }
@@ -271,15 +272,15 @@ fun CalculatorDialog(initial: String, decimal: Boolean, onDismiss: () -> Unit, o
             }
         },
         confirmButton = {
-            TextButton(enabled = value != null, onClick = { onResult(result(value!!)); onDismiss() }) { Text("Готово") }
+            TextButton(enabled = value != null, onClick = { onResult(result(value!!)); onDismiss() }) { Text(tr("Готово", "Готово")) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Отмена", "Скасувати")) } },
     )
 }
 
 /** Поле даты: по нажатию — выбор в календаре. */
 @Composable
-fun DateField(date: LocalDate, onChange: (LocalDate) -> Unit, label: String = "Дата", modifier: Modifier = Modifier.fillMaxWidth()) {
+fun DateField(date: LocalDate, onChange: (LocalDate) -> Unit, label: String = tr("Дата", "Дата"), modifier: Modifier = Modifier.fillMaxWidth()) {
     var pick by remember { mutableStateOf(false) }
     Box(modifier) {
         OutlinedTextField(
@@ -301,9 +302,9 @@ fun DatePickDialog(initial: LocalDate, onDismiss: () -> Unit, onPick: (LocalDate
             TextButton(onClick = {
                 state.selectedDateMillis?.let { onPick(Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate()) }
                 onDismiss()
-            }) { Text("ОК") }
+            }) { Text(tr("ОК", "ОК")) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Отмена", "Скасувати")) } },
     ) { DatePicker(state) }
 }
 
@@ -312,20 +313,20 @@ fun TimePickDialog(minutes: Int, onDismiss: () -> Unit, onPick: (Int) -> Unit) {
     val state = rememberTimePickerState(initialHour = minutes / 60, initialMinute = minutes % 60, is24Hour = true)
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = { onPick(state.hour * 60 + state.minute); onDismiss() }) { Text("ОК") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        confirmButton = { TextButton(onClick = { onPick(state.hour * 60 + state.minute); onDismiss() }) { Text(tr("ОК", "ОК")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Отмена", "Скасувати")) } },
         text = { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { TimePicker(state) } },
     )
 }
 
 @Composable
-fun ConfirmDialog(title: String, text: String, confirm: String = "Удалить", onDismiss: () -> Unit, onConfirm: () -> Unit) {
+fun ConfirmDialog(title: String, text: String, confirm: String = tr("Удалить", "Видалити"), onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = { Text(text) },
         confirmButton = { TextButton(onClick = { onConfirm(); onDismiss() }) { Text(confirm) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Отмена", "Скасувати")) } },
     )
 }
 
@@ -361,7 +362,7 @@ fun changed(vararg values: Any?): Boolean {
 fun FormDialog(
     title: String,
     onDismiss: () -> Unit,
-    confirmText: String = "Сохранить",
+    confirmText: String = tr("Сохранить", "Зберегти"),
     confirmEnabled: Boolean = true,
     onConfirm: () -> Unit,
     extra: (@Composable () -> Unit)? = null,
@@ -384,16 +385,16 @@ fun FormDialog(
         dismissButton = {
             Row {
                 extra?.invoke()
-                TextButton(onClick = tryDismiss) { Text("Отмена") }
+                TextButton(onClick = tryDismiss) { Text(tr("Отмена", "Скасувати")) }
             }
         },
     )
     if (askExit) AlertDialog(
         onDismissRequest = { askExit = false },
-        title = { Text("Выйти без сохранения?") },
-        text = { Text("Введённые данные будут потеряны.") },
-        confirmButton = { TextButton(onClick = { askExit = false; onDismiss() }) { Text("Выйти") } },
-        dismissButton = { TextButton(onClick = { askExit = false }) { Text("Продолжить ввод") } },
+        title = { Text(tr("Выйти без сохранения?", "Вийти без збереження?")) },
+        text = { Text(tr("Введённые данные будут потеряны.", "Введені дані буде втрачено.")) },
+        confirmButton = { TextButton(onClick = { askExit = false; onDismiss() }) { Text(tr("Выйти", "Вийти")) } },
+        dismissButton = { TextButton(onClick = { askExit = false }) { Text(tr("Продолжить ввод", "Продовжити введення")) } },
     )
 }
 

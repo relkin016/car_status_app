@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.relkin.carstatus.CarApp
 import com.relkin.carstatus.ui.CarTheme
+import com.relkin.carstatus.util.tr
 
 /** Полноэкранный «будильник» для напоминаний в режиме будильника. */
 class AlarmActivity : ComponentActivity() {
@@ -51,7 +52,7 @@ class AlarmActivity : ComponentActivity() {
                         Button(
                             onClick = { Reminders.dismiss(this@AlarmActivity, notif); finish() },
                             modifier = Modifier.fillMaxWidth().height(64.dp),
-                        ) { Text("Выключить", style = MaterialTheme.typography.titleLarge) }
+                        ) { Text(tr("Выключить", "Вимкнути"), style = MaterialTheme.typography.titleLarge) }
                     }
                 }
             }

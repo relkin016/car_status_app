@@ -6,6 +6,7 @@ import com.relkin.carstatus.data.Repo
 import com.relkin.carstatus.notify.Reminders
 import com.relkin.carstatus.obd.Obd
 import com.relkin.carstatus.util.Fmt
+import com.relkin.carstatus.util.Lang
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class CarApp : Application() {
@@ -22,6 +23,7 @@ class CarApp : Application() {
     override fun onCreate() {
         super.onCreate()
         prefs = Prefs(this)
+        Lang.apply(prefs.lang.value)
         Fmt.currency = prefs.currency.value
         garage = Garage(this)
         if (garage.created) migrateFrom01()

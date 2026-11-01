@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
+import com.relkin.carstatus.util.tr
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -176,14 +177,14 @@ fun PhotoStrip(existing: List<String>, added: List<String>, onAdd: (String) -> U
     val adder = rememberPhotoAdder(onAdd)
     var view by remember { mutableStateOf<String?>(null) }
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        OutlinedIconButton(onClick = adder.camera, modifier = Modifier.size(56.dp)) { Icon(Icons.Filled.PhotoCamera, "Снять фото") }
-        OutlinedIconButton(onClick = adder.gallery, modifier = Modifier.size(56.dp)) { Icon(Icons.Filled.AddPhotoAlternate, "Из галереи") }
+        OutlinedIconButton(onClick = adder.camera, modifier = Modifier.size(56.dp)) { Icon(Icons.Filled.PhotoCamera, tr("Снять фото", "Зробити фото")) }
+        OutlinedIconButton(onClick = adder.gallery, modifier = Modifier.size(56.dp)) { Icon(Icons.Filled.AddPhotoAlternate, tr("Из галереи", "З галереї")) }
         existing.forEach { PhotoThumb(it, 56.dp, maxSide = 160) { view = it } }
         added.forEach { f ->
             Box {
                 PhotoThumb(f, 56.dp, maxSide = 160) { view = f }
                 Icon(
-                    Icons.Filled.Close, "Убрать",
+                    Icons.Filled.Close, tr("Убрать", "Прибрати"),
                     Modifier.align(Alignment.TopEnd).size(18.dp).clip(RoundedCornerShape(9.dp))
                         .background(MaterialTheme.colorScheme.errorContainer).clickable { onRemoveAdded(f) },
                 )
@@ -197,6 +198,6 @@ fun PhotoStrip(existing: List<String>, added: List<String>, onAdd: (String) -> U
 fun SimpleInfoDialog(title: String, text: String, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss, title = { Text(title) }, text = { Text(text) },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("ОК") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(tr("ОК", "ОК")) } },
     )
 }

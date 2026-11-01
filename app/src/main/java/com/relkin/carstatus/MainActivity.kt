@@ -9,12 +9,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.relkin.carstatus.notify.Reminders
 import com.relkin.carstatus.ui.CarRoot
-import java.util.Locale
+import com.relkin.carstatus.util.Lang
 
 class MainActivity : ComponentActivity() {
-    /** Системные строки (выбор даты и времени) — по-русски, как и интерфейс. */
+    /** Системные строки (выбор даты и времени) — на языке интерфейса. */
     override fun attachBaseContext(base: Context) {
-        val cfg = Configuration(base.resources.configuration).apply { setLocale(Locale.forLanguageTag("ru")) }
+        // «как в системе»: язык системы мог смениться, пока процесс жил
+        Lang.apply((base.applicationContext as CarApp).prefs.lang.value)
+        val cfg = Configuration(base.resources.configuration).apply { setLocale(Lang.locale) }
         super.attachBaseContext(base.createConfigurationContext(cfg))
     }
 

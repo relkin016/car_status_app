@@ -42,6 +42,7 @@ import com.relkin.carstatus.data.Quests
 import com.relkin.carstatus.data.Tips
 import com.relkin.carstatus.data.Trigger
 import com.relkin.carstatus.util.Fmt
+import com.relkin.carstatus.util.tr
 
 @Composable
 fun StatusScreen() {
@@ -51,9 +52,9 @@ fun StatusScreen() {
     val h = remember(s) { Health.of(s, s.fallbackKmPerDay) }
     val dc = LocalData.current
     TabScaffold(
-        "Статус",
-        actions = { IconButton(onClick = { ui.push(Route.Items) }) { Icon(Icons.Filled.Tune, "Пункты ТО") } },
-        fab = { FloatingActionButton(onClick = { ui.edit = Edit.AddMenu }) { Icon(Icons.Filled.Add, "Добавить") } },
+        tr("Статус", "Статус"),
+        actions = { IconButton(onClick = { ui.push(Route.Items) }) { Icon(Icons.Filled.Tune, tr("Пункты ТО", "Пункти ТО")) } },
+        fab = { FloatingActionButton(onClick = { ui.edit = Edit.AddMenu }) { Icon(Icons.Filled.Add, tr("Добавить", "Додати")) } },
     ) { pad ->
         LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 88.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item {
@@ -65,7 +66,7 @@ fun StatusScreen() {
                             Column(Modifier.weight(1f)) {
                                 Text(s.kind.healthOf, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text(
-                                    h.overall?.let { "${(it * 100).toInt()} HP" } ?: "нет данных",
+                                    h.overall?.let { "${(it * 100).toInt()} HP" } ?: tr("нет данных", "немає даних"),
                                     style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold,
                                 )
                             }
@@ -76,7 +77,7 @@ fun StatusScreen() {
                                     Text(Fmt.km(s.currentKm), style = MaterialTheme.typography.titleMedium)
                                 }
                                 Text(
-                                    "~${Fmt.num(h.kmPerDay.toLong().coerceAtLeast(0) * 30)} км/мес" + if (h.kmPerDayMeasured) "" else " (оценка)",
+                                    "~${Fmt.num(h.kmPerDay.toLong().coerceAtLeast(0) * 30)} " + tr("км/мес", "км/міс") + if (h.kmPerDayMeasured) "" else tr(" (оценка)", " (оцінка)"),
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
@@ -87,9 +88,9 @@ fun StatusScreen() {
                         Spacer(Modifier.height(8.dp))
                         Text(
                             when {
-                                crit.isNotEmpty() -> "Требует внимания: " + crit.joinToString { "${it.item.name} (${it.percent}%)" }
-                                h.worst != null -> "Ближайшее: ${h.worst.item.name} — ${dueText(h.worst)}"
-                                else -> "Укажите, когда обслуживались узлы — и появится прогноз"
+                                crit.isNotEmpty() -> tr("Требует внимания: ", "Потребує уваги: ") + crit.joinToString { "${it.item.name} (${it.percent}%)" }
+                                h.worst != null -> tr("Ближайшее: ${h.worst.item.name} — ${dueText(h.worst)}", "Найближче: ${h.worst.item.name} — ${dueText(h.worst)}")
+                                else -> tr("Укажите, когда обслуживались узлы — и появится прогноз", "Вкажіть, коли обслуговувалися вузли — і з'явиться прогноз")
                             },
                             style = MaterialTheme.typography.bodyMedium,
                         )
@@ -102,11 +103,11 @@ fun StatusScreen() {
                 item(key = "quest_${q.key}") {
                     Card(Modifier.fillMaxWidth().clickable { ui.push(Route.Quests) }, colors = CardDefaults.cardColors(MaterialTheme.colorScheme.secondaryContainer)) {
                         Column(Modifier.padding(16.dp)) {
-                            Text("${q.emoji} Сезонный квест: ${q.title}", style = MaterialTheme.typography.titleMedium)
+                            Text(tr("${q.emoji} Сезонный квест: ${q.title}", "${q.emoji} Сезонний квест: ${q.title}"), style = MaterialTheme.typography.titleMedium)
                             Spacer(Modifier.height(8.dp))
                             LinearProgressIndicator(progress = { done.toFloat() / q.steps.size }, modifier = Modifier.fillMaxWidth().height(8.dp))
                             Spacer(Modifier.height(4.dp))
-                            Text(if (done == q.steps.size) "Выполнено! Всё готово к сезону" else "$done из ${q.steps.size} · дальше: ${q.steps.first { q.stepKey(season, it) !in s.questDone }.title}", style = MaterialTheme.typography.bodySmall)
+                            Text(if (done == q.steps.size) tr("Выполнено! Всё готово к сезону", "Виконано! Усе готово до сезону") else "$done " + tr("из", "з") + " ${q.steps.size} · " + tr("дальше: ", "далі: ") + q.steps.first { q.stepKey(season, it) !in s.questDone }.title, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
@@ -128,13 +129,13 @@ fun StatusScreen() {
                         Icon(Icons.Filled.ReportProblem, null)
                         Spacer(Modifier.size(12.dp))
                         Column {
-                            Text("Поломки: ${open.size}", style = MaterialTheme.typography.titleSmall)
+                            Text(tr("Поломки: ${open.size}", "Поломки: ${open.size}"), style = MaterialTheme.typography.titleSmall)
                             Text(open.take(3).joinToString { it.title }, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
             }
-            item { SectionTitle("Узлы и расходники", Modifier.padding(start = 0.dp)) }
+            item { SectionTitle(tr("Узлы и расходники", "Вузли й витратні матеріали"), Modifier.padding(start = 0.dp)) }
             items(h.items, key = { it.item.id }) { ih -> ItemCard(ih) { ui.push(Route.ItemDetail(ih.item.id)) } }
         }
     }
@@ -142,11 +143,11 @@ fun StatusScreen() {
 
 fun dueText(ih: ItemHealth): String {
     val parts = buildList {
-        ih.kmLeft?.let { add(if (it >= 0) Fmt.km(it) else "перепробег ${Fmt.km(-it)}") }
-        ih.daysLeft?.let { add(if (it >= 0) Fmt.days(it) else "просрочено на ${Fmt.days(-it)}") }
+        ih.kmLeft?.let { add(if (it >= 0) Fmt.km(it) else tr("перепробег ${Fmt.km(-it)}", "перепробіг ${Fmt.km(-it)}")) }
+        ih.daysLeft?.let { add(if (it >= 0) Fmt.days(it) else tr("просрочено на ${Fmt.days(-it)}", "прострочено на ${Fmt.days(-it)}")) }
     }
-    val due = ih.due?.let { " → ~${Fmt.day(it)} (${if (ih.trigger == Trigger.KM) "по пробегу" else "по времени"})" } ?: ""
-    return (if (parts.isEmpty()) "нет данных" else "осталось " + parts.joinToString(" или ")) + due
+    val due = ih.due?.let { " → ~${Fmt.day(it)} (" + (if (ih.trigger == Trigger.KM) tr("по пробегу", "за пробігом") else tr("по времени", "за часом")) + ")" } ?: ""
+    return (if (parts.isEmpty()) tr("нет данных", "немає даних") else tr("осталось ", "залишилось ") + parts.joinToString(tr(" или ", " або "))) + due
 }
 
 @Composable

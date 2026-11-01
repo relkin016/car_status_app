@@ -45,9 +45,14 @@ import com.relkin.carstatus.data.Energy
 import com.relkin.carstatus.data.VehicleKind
 import com.relkin.carstatus.data.Costs
 import com.relkin.carstatus.util.Fmt
+import com.relkin.carstatus.util.tr
 import java.time.LocalDate
 
-enum class Period(val label: String, val days: Long?) { M1("Месяц", 30), M3("3 мес", 91), Y1("Год", 365), ALL("Всё время", null) }
+enum class Period(private val ru: String, private val uk: String, val days: Long?) {
+    M1("Месяц", "Місяць", 30), M3("3 мес", "3 міс", 91), Y1("Год", "Рік", 365), ALL("Всё время", "Весь час", null);
+
+    val label: String get() = tr(ru, uk)
+}
 
 fun Period.from(): Long? = days?.let { LocalDate.now().toEpochDay() - it + 1 }
 
@@ -61,9 +66,9 @@ fun CostScreen() {
     val period = PeriodState.period
     val r = remember(s, period) { Costs.report(s, period.from()) }
     TabScaffold(
-        "Цена километра",
-        actions = { IconButton(onClick = { ui.push(Route.Report(ReportKind.STATEMENT)) }) { Icon(Icons.Filled.Description, "Выписка") } },
-        fab = { FloatingActionButton(onClick = { ui.edit = Edit.AddMenu }) { Icon(Icons.Filled.Add, "Добавить") } },
+        tr("Цена километра", "Ціна кілометра"),
+        actions = { IconButton(onClick = { ui.push(Route.Report(ReportKind.STATEMENT)) }) { Icon(Icons.Filled.Description, tr("Выписка", "Виписка")) } },
+        fab = { FloatingActionButton(onClick = { ui.edit = Edit.AddMenu }) { Icon(Icons.Filled.Add, tr("Добавить", "Додати")) } },
     ) { pad ->
         LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 88.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item {
@@ -75,18 +80,18 @@ fun CostScreen() {
             item { Breakdown(r, s.kind) }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Tile("Пройдено", Fmt.km(r.km), Modifier.weight(1f))
-                    Tile("Потрачено", Fmt.money(r.total), Modifier.weight(1f))
+                    Tile(tr("Пройдено", "Пройдено"), Fmt.km(r.km), Modifier.weight(1f))
+                    Tile(tr("Потрачено", "Витрачено"), Fmt.money(r.total), Modifier.weight(1f))
                 }
             }
             if (s.kind.energy != Energy.NONE) item {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Tile("Расход", r.consumption?.let { Fmt.dec(it) + " ${s.kind.unit}/100" } ?: "—", Modifier.weight(1f))
-                    Tile(if (s.kind.energy == Energy.ELECTRIC) "Цена кВт·ч" else "Цена литра", r.pricePerLiter?.let { Fmt.money2(it) } ?: "—", Modifier.weight(1f))
+                    Tile(tr("Расход", "Витрата"), r.consumption?.let { Fmt.dec(it) + " ${s.kind.unit}/100" } ?: "—", Modifier.weight(1f))
+                    Tile(if (s.kind.energy == Energy.ELECTRIC) tr("Цена кВт·ч", "Ціна кВт·год") else tr("Цена литра", "Ціна літра"), r.pricePerLiter?.let { Fmt.money2(it) } ?: "—", Modifier.weight(1f))
                 }
             }
             if (r.byMonth.size > 1) {
-                item { Text("По месяцам", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 6.dp)) }
+                item { Text(tr("По месяцам", "За місяцями"), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 6.dp)) }
                 val max = r.byMonth.maxOf { it.second.values.sum() }.coerceAtLeast(1.0)
                 r.byMonth.reversed().forEach { (m, v) ->
                     item(key = m.toString()) {
@@ -104,7 +109,7 @@ fun CostScreen() {
             }
             item {
                 Text(
-                    "Цена километра = (${s.kind.energyLabel.lowercase()} + ТО + запчасти + прочее) ÷ пройденные км за период. Пробег берётся из показаний одометра и записей.",
+                    tr("Цена километра = (${s.kind.energyLabel.lowercase()} + ТО + запчасти + прочее) ÷ пройденные км за период. Пробег берётся из показаний одометра и записей.", "Ціна кілометра = (${s.kind.energyLabel.lowercase()} + ТО + запчастини + інше) ÷ пройдені км за період. Пробіг береться з показників одометра й записів."),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -116,16 +121,16 @@ fun CostScreen() {
 private fun Hero(r: CostReport) {
     ElevatedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(20.dp)) {
-            Text("Реальная цена 1 км", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(tr("Реальная цена 1 км", "Реальна ціна 1 км"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
                 r.perKm?.let { Fmt.money2(it) } ?: "—",
                 style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold,
             )
             Text(
-                if (r.km == 0L) "Нужно минимум два показания пробега за период" else "за ${Fmt.km(r.km)} · ${r.entries.size} операций",
+                if (r.km == 0L) tr("Нужно минимум два показания пробега за период", "Потрібно щонайменше два показники пробігу за період") else tr("за ${Fmt.km(r.km)} · ${r.entries.size} операций", "за ${Fmt.km(r.km)} · ${r.entries.size} операцій"),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            r.perKm?.let { Text("≈ ${Fmt.money(it * 100)} на 100 км", style = MaterialTheme.typography.bodyMedium) }
+            r.perKm?.let { Text(tr("≈ ${Fmt.money(it * 100)} на 100 км", "≈ ${Fmt.money(it * 100)} на 100 км"), style = MaterialTheme.typography.bodyMedium) }
         }
     }
 }

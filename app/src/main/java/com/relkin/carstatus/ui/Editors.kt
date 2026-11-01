@@ -52,6 +52,7 @@ import com.relkin.carstatus.data.PhotoOwner
 import com.relkin.carstatus.data.Energy
 import com.relkin.carstatus.data.VehicleKind
 import com.relkin.carstatus.util.Fmt
+import com.relkin.carstatus.util.tr
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
@@ -86,19 +87,19 @@ private fun AddMenu(close: () -> Unit) {
     fun go(e: Edit) { ui.edit = e }
     val kind = ui.repo.s.kind
     val rows = listOfNotNull<Triple<ImageVector, String, () -> Unit>>(
-        Triple(Icons.Filled.Speed, "Пробег") { go(Edit.Odo) },
+        Triple(Icons.Filled.Speed, tr("Пробег", "Пробіг")) { go(Edit.Odo) },
         if (kind.energy == Energy.NONE) null else Triple(energyIcon(kind), kind.refuel) { go(Edit.Log(null, LogType.FUEL)) },
-        Triple(Icons.Filled.Build, "Обслуживание (ТО)") { go(Edit.Log(null, LogType.SERVICE)) },
-        Triple(Icons.Filled.Handyman, "Работы (ремонт)") { go(Edit.Log(null, LogType.WORK)) },
-        Triple(Icons.Filled.Inventory2, "Запчасти") { go(Edit.Log(null, LogType.PART)) },
-        Triple(Icons.Filled.ReceiptLong, "Прочий расход") { go(Edit.Log(null, LogType.OTHER)) },
-        Triple(Icons.Filled.CarCrash, "Запись в дневник") { go(Edit.IncidentE(null)) },
-        Triple(Icons.Filled.ReportProblem, "Поломка в список") { go(Edit.BreakdownE(null)) },
-        Triple(Icons.Filled.PhotoCamera, "Фото в журнал") { close(); ui.push(Route.Photos) },
+        Triple(Icons.Filled.Build, tr("Обслуживание (ТО)", "Обслуговування (ТО)")) { go(Edit.Log(null, LogType.SERVICE)) },
+        Triple(Icons.Filled.Handyman, tr("Работы (ремонт)", "Роботи (ремонт)")) { go(Edit.Log(null, LogType.WORK)) },
+        Triple(Icons.Filled.Inventory2, tr("Запчасти", "Запчастини")) { go(Edit.Log(null, LogType.PART)) },
+        Triple(Icons.Filled.ReceiptLong, tr("Прочий расход", "Інша витрата")) { go(Edit.Log(null, LogType.OTHER)) },
+        Triple(Icons.Filled.CarCrash, tr("Запись в дневник", "Запис у щоденник")) { go(Edit.IncidentE(null)) },
+        Triple(Icons.Filled.ReportProblem, tr("Поломка в список", "Поломка до списку")) { go(Edit.BreakdownE(null)) },
+        Triple(Icons.Filled.PhotoCamera, tr("Фото в журнал", "Фото в журнал")) { close(); ui.push(Route.Photos) },
     )
     AlertDialog(
         onDismissRequest = close,
-        title = { Text("Добавить") },
+        title = { Text(tr("Добавить", "Додати")) },
         text = {
             Column {
                 rows.forEach { (icon, label, action) ->
@@ -111,7 +112,7 @@ private fun AddMenu(close: () -> Unit) {
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = close) { Text("Закрыть") } },
+        dismissButton = { TextButton(onClick = close) { Text(tr("Закрыть", "Закрити")) } },
     )
 }
 
@@ -126,20 +127,20 @@ fun OdoDialog(close: () -> Unit) {
     val km = parseKm(text)
     val less = km != null && km < s.currentKm
     FormDialog(
-        title = "Текущий пробег",
+        title = tr("Текущий пробег", "Поточний пробіг"),
         onDismiss = close,
         dirty = changed(text, date),
         confirmEnabled = km != null,
         onConfirm = {
             ui.repo.addOdo(km!!, date.toEpochDay(), OdoSource.MANUAL)
-            ui.toast("Пробег ${Fmt.km(km)} сохранён")
+            ui.toast(tr("Пробег ${Fmt.km(km)} сохранён", "Пробіг ${Fmt.km(km)} збережено"))
             close()
         },
     ) {
         NumField(
-            text, { text = it; auto = false }, "Пробег", suffix = "км", decimal = false,
-            hint = if (less) "Меньше последнего (${Fmt.km(s.currentKm)}) — проверьте" else "Было: ${Fmt.km(s.currentKm)}" +
-                (s.lastOdoDate?.let { " от ${Fmt.day(it)}" } ?: ""),
+            text, { text = it; auto = false }, tr("Пробег", "Пробіг"), suffix = "км", decimal = false,
+            hint = if (less) tr("Меньше последнего (${Fmt.km(s.currentKm)}) — проверьте", "Менше за останній (${Fmt.km(s.currentKm)}) — перевірте") else tr("Было: ${Fmt.km(s.currentKm)}", "Було: ${Fmt.km(s.currentKm)}") +
+                (s.lastOdoDate?.let { tr(" от ${Fmt.day(it)}", " від ${Fmt.day(it)}") } ?: ""),
         )
         DateField(date, { date = it; if (auto) text = s.kmAt(it.toEpochDay()).toString() })
     }
@@ -207,7 +208,7 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
 
     val kind = s.kind
     FormDialog(
-        title = (if (e == null) "Новая запись: " else "") + logLabel(type, kind),
+        title = (if (e == null) tr("Новая запись: ", "Новий запис: ") else "") + logLabel(type, kind),
         onDismiss = dismiss,
         dirty = changed(type, date, km, itemId, title, amount, parts, liters, full, note, brand, partNo) || drafts.isNotEmpty(),
         confirmEnabled = valid,
@@ -223,25 +224,25 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
             ui.repo.saveLog(entry) { id -> saveDrafts(ui, files, PhotoOwner.LOG, id, kmVal) }
             close()
         },
-        extra = if (e != null) { { TextButton(onClick = { confirmDelete = true }) { Text("Удалить") } } } else null,
+        extra = if (e != null) { { TextButton(onClick = { confirmDelete = true }) { Text(tr("Удалить", "Видалити")) } } } else null,
     ) {
         if (e == null) Segmented(
             listOfNotNull(
-                if (kind.energy == Energy.NONE) null else LogType.FUEL to (if (kind.energy == Energy.ELECTRIC) "Заряд" else "Топл."),
-                LogType.SERVICE to "ТО", LogType.WORK to "Раб.", LogType.PART to "Зап.", LogType.OTHER to "Проч.",
+                if (kind.energy == Energy.NONE) null else LogType.FUEL to (if (kind.energy == Energy.ELECTRIC) tr("Заряд", "Заряд") else tr("Топл.", "Пальне")),
+                LogType.SERVICE to tr("ТО", "ТО"), LogType.WORK to tr("Раб.", "Роб."), LogType.PART to tr("Зап.", "Зап."), LogType.OTHER to tr("Проч.", "Ін."),
             ),
             type, { type = it },
         )
         DateField(date, { date = it; if (kmAuto) km = s.kmAt(it.toEpochDay()).toString() })
         NumField(
-            km, { km = it; kmAuto = false }, "Пробег", suffix = "км", decimal = false,
-            hint = if (kmAuto && date != LocalDate.now()) "Подставлен по показаниям на ${Fmt.day(date)}" else null,
+            km, { km = it; kmAuto = false }, tr("Пробег", "Пробіг"), suffix = "км", decimal = false,
+            hint = if (kmAuto && date != LocalDate.now()) tr("Подставлен по показаниям на ${Fmt.day(date)}", "Підставлено за показниками на ${Fmt.day(date)}") else null,
         )
         if (type == LogType.SERVICE || type == LogType.PART) {
             Picker(
-                if (type == LogType.SERVICE) "Пункт ТО" else "Для пункта ТО (необязательно)",
-                s.item(itemId)?.name ?: "— другое —",
-                listOf<Pair<Long?, String>>(null to "— другое —") + s.items.map { it.id to it.name },
+                if (type == LogType.SERVICE) tr("Пункт ТО", "Пункт ТО") else tr("Для пункта ТО (необязательно)", "Для пункту ТО (необов'язково)"),
+                s.item(itemId)?.name ?: tr("— другое —", "— інше —"),
+                listOf<Pair<Long?, String>>(null to tr("— другое —", "— інше —")) + s.items.map { it.id to it.name },
             ) { id ->
                 itemId = id
                 // Подсказка из прошлой замены этого пункта
@@ -250,43 +251,43 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
                 }
             }
             if (type == LogType.SERVICE && itemId != null) Text(
-                "Запись обновит «последнее обслуживание» пункта и восстановит его HP.",
+                tr("Запись обновит «последнее обслуживание» пункта и восстановит его HP.", "Запис оновить «останнє обслуговування» пункту й відновить його HP."),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         OutlinedTextField(
             title, { title = it }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-            label = { Text(when (type) { LogType.FUEL -> if (kind.energy == Energy.ELECTRIC) "Где заряжали (дом, станция)" else "АЗС / марка топлива"; LogType.OTHER -> "Что (мойка, страховка, штраф…)"; LogType.WORK -> "Что делали (проводка, кузов, подвеска…)"; else -> "Описание работ / деталей" }) },
+            label = { Text(when (type) { LogType.FUEL -> if (kind.energy == Energy.ELECTRIC) tr("Где заряжали (дом, станция)", "Де заряджали (дім, станція)") else tr("АЗС / марка топлива", "АЗС / марка пального"); LogType.OTHER -> tr("Что (мойка, страховка, штраф…)", "Що (мийка, страховка, штраф…)"); LogType.WORK -> tr("Что делали (проводка, кузов, подвеска…)", "Що робили (проводка, кузов, підвіска…)"); else -> tr("Описание работ / деталей", "Опис робіт / деталей") }) },
         )
         when (type) {
             LogType.FUEL -> {
                 val ev = kind.energy == Energy.ELECTRIC
-                NumField(liters, { liters = it }, if (ev) "Энергия" else "Литры", suffix = kind.unit)
+                NumField(liters, { liters = it }, if (ev) tr("Энергия", "Енергія") else tr("Литры", "Літри"), suffix = kind.unit)
                 NumField(
-                    amount, { amount = it }, "Сумма", suffix = Fmt.currency,
+                    amount, { amount = it }, tr("Сумма", "Сума"), suffix = Fmt.currency,
                     hint = if ((litersVal ?: 0.0) > 0 && (amountVal ?: 0.0) > 0) "${Fmt.money2(amountVal!! / litersVal!!)}/${kind.unit}" else null,
                 )
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { full = !full }) {
-                    Checkbox(full, { full = it }); Text(if (ev) "До 100% (для расчёта расхода)" else "Полный бак (для расчёта расхода)")
+                    Checkbox(full, { full = it }); Text(if (ev) tr("До 100% (для расчёта расхода)", "До 100% (для розрахунку витрати)") else tr("Полный бак (для расчёта расхода)", "Повний бак (для розрахунку витрати)"))
                 }
             }
             LogType.SERVICE, LogType.WORK -> {
-                NumField(amount, { amount = it }, "Работа", suffix = Fmt.currency)
-                NumField(parts, { parts = it }, "Запчасти и материалы", suffix = Fmt.currency)
+                NumField(amount, { amount = it }, tr("Работа", "Робота"), suffix = Fmt.currency)
+                NumField(parts, { parts = it }, tr("Запчасти и материалы", "Запчастини й матеріали"), suffix = Fmt.currency)
             }
-            else -> NumField(amount, { amount = it }, "Сумма", suffix = Fmt.currency)
+            else -> NumField(amount, { amount = it }, tr("Сумма", "Сума"), suffix = Fmt.currency)
         }
         if (hasParts) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(brand, { brand = it }, label = { Text("Бренд") }, singleLine = true, modifier = Modifier.weight(1f))
-            OutlinedTextField(partNo, { partNo = it.uppercase() }, label = { Text("Артикул") }, singleLine = true, modifier = Modifier.weight(1f))
+            OutlinedTextField(brand, { brand = it }, label = { Text(tr("Бренд", "Бренд")) }, singleLine = true, modifier = Modifier.weight(1f))
+            OutlinedTextField(partNo, { partNo = it.uppercase() }, label = { Text(tr("Артикул", "Артикул")) }, singleLine = true, modifier = Modifier.weight(1f))
         }
-        OutlinedTextField(note, { note = it }, label = { Text("Заметка") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
+        OutlinedTextField(note, { note = it }, label = { Text(tr("Заметка", "Нотатка")) }, modifier = Modifier.fillMaxWidth(), minLines = 2)
         PhotoStrip(
             existing = e?.let { s.photosOf(PhotoOwner.LOG, it.id).map { p -> p.file } }.orEmpty(),
             added = drafts, onAdd = { drafts += it }, onRemoveAdded = { drafts -= it; File(ui.repo.photoDir, it).delete() },
         )
     }
-    if (confirmDelete && e != null) ConfirmDialog("Удалить запись?", "Запись и её фото будут удалены.", onDismiss = { confirmDelete = false }) {
+    if (confirmDelete && e != null) ConfirmDialog(tr("Удалить запись?", "Видалити запис?"), tr("Запись и её фото будут удалены.", "Запис і його фото буде видалено."), onDismiss = { confirmDelete = false }) {
         ui.repo.deleteLog(e.id); dismiss()
     }
 }
@@ -311,7 +312,7 @@ private fun IncidentDialog(i: Incident?, close: () -> Unit) {
     val kmVal = if (km.isBlank()) null else parseKm(km)
 
     FormDialog(
-        title = if (i == null) "Запись в дневник" else "Дневник",
+        title = if (i == null) tr("Запись в дневник", "Запис у щоденник") else tr("Дневник", "Щоденник"),
         onDismiss = dismiss,
         dirty = changed(date, minutes, km, title, note, severity) || drafts.isNotEmpty(),
         confirmEnabled = title.isNotBlank() && (km.isBlank() || kmVal != null),
@@ -323,16 +324,16 @@ private fun IncidentDialog(i: Incident?, close: () -> Unit) {
             }
             close()
         },
-        extra = if (i != null) { { TextButton(onClick = { confirmDelete = true }) { Text("Удалить") } } } else null,
+        extra = if (i != null) { { TextButton(onClick = { confirmDelete = true }) { Text(tr("Удалить", "Видалити")) } } } else null,
     ) {
-        OutlinedTextField(title, { title = it }, label = { Text("Что случилось") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(title, { title = it }, label = { Text(tr("Что случилось", "Що сталося")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             DateField(date, { date = it; if (kmAuto) km = s.kmAt(it.toEpochDay()).toString() }, modifier = Modifier.weight(1.4f))
             OutlinedButton(onClick = { pickTime = true }, modifier = Modifier.weight(1f).padding(top = 8.dp)) { Text(Fmt.hm(minutes)) }
         }
-        NumField(km, { km = it; kmAuto = false }, "Пробег", suffix = "км", decimal = false)
-        Segmented(listOf(0 to "Заметка", 1 to "Внимание", 2 to "Серьёзно"), severity, { severity = it })
-        OutlinedTextField(note, { note = it }, label = { Text("Подробности: звук, условия, что делали") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+        NumField(km, { km = it; kmAuto = false }, tr("Пробег", "Пробіг"), suffix = "км", decimal = false)
+        Segmented(listOf(0 to tr("Заметка", "Нотатка"), 1 to tr("Внимание", "Увага"), 2 to tr("Серьёзно", "Серйозно")), severity, { severity = it })
+        OutlinedTextField(note, { note = it }, label = { Text(tr("Подробности: звук, условия, что делали", "Подробиці: звук, умови, що робили")) }, modifier = Modifier.fillMaxWidth(), minLines = 3)
         PhotoStrip(
             existing = i?.let { s.photosOf(PhotoOwner.INCIDENT, it.id).map { p -> p.file } }.orEmpty(),
             added = drafts, onAdd = { drafts += it }, onRemoveAdded = { drafts -= it; File(ui.repo.photoDir, it).delete() },
@@ -341,10 +342,10 @@ private fun IncidentDialog(i: Incident?, close: () -> Unit) {
             ui.edit = null
             dropDrafts(ui, drafts)
             ui.edit = Edit.BreakdownE(Breakdown(title = title.trim(), note = note.trim(), priority = severity, createdDate = date.toEpochDay(), createdKm = kmVal))
-        }, enabled = title.isNotBlank()) { Text("Это поломка → в список поломок") }
+        }, enabled = title.isNotBlank()) { Text(tr("Это поломка → в список поломок", "Це поломка → до списку поломок")) }
     }
     if (pickTime) TimePickDialog(minutes, { pickTime = false }) { minutes = it }
-    if (confirmDelete && i != null) ConfirmDialog("Удалить запись дневника?", i.title, onDismiss = { confirmDelete = false }) {
+    if (confirmDelete && i != null) ConfirmDialog(tr("Удалить запись дневника?", "Видалити запис щоденника?"), i.title, onDismiss = { confirmDelete = false }) {
         ui.repo.deleteIncident(i.id); dismiss()
     }
 }
@@ -359,7 +360,7 @@ private fun BreakdownDialog(b: Breakdown?, close: () -> Unit) {
     var confirmDelete by remember { mutableStateOf(false) }
     val existing = b?.takeIf { it.id != 0L }
     FormDialog(
-        title = if (existing == null) "Новая поломка" else "Поломка",
+        title = if (existing == null) tr("Новая поломка", "Нова поломка") else tr("Поломка", "Поломка"),
         onDismiss = close,
         dirty = changed(title, note, priority),
         confirmEnabled = title.isNotBlank(),
@@ -370,13 +371,13 @@ private fun BreakdownDialog(b: Breakdown?, close: () -> Unit) {
             )
             close()
         },
-        extra = if (existing != null) { { TextButton(onClick = { confirmDelete = true }) { Text("Удалить") } } } else null,
+        extra = if (existing != null) { { TextButton(onClick = { confirmDelete = true }) { Text(tr("Удалить", "Видалити")) } } } else null,
     ) {
-        OutlinedTextField(title, { title = it }, label = { Text("Что не так") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        Segmented(listOf(0 to "Терпит", 1 to "Скоро", 2 to "Срочно"), priority, { priority = it })
-        OutlinedTextField(note, { note = it }, label = { Text("Заметка (запчасть, цена, СТО)") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
+        OutlinedTextField(title, { title = it }, label = { Text(tr("Что не так", "Що не так")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        Segmented(listOf(0 to tr("Терпит", "Терпить"), 1 to tr("Скоро", "Скоро"), 2 to tr("Срочно", "Терміново")), priority, { priority = it })
+        OutlinedTextField(note, { note = it }, label = { Text(tr("Заметка (запчасть, цена, СТО)", "Нотатка (запчастина, ціна, СТО)")) }, modifier = Modifier.fillMaxWidth(), minLines = 2)
     }
-    if (confirmDelete && existing != null) ConfirmDialog("Удалить поломку?", existing.title, onDismiss = { confirmDelete = false }) {
+    if (confirmDelete && existing != null) ConfirmDialog(tr("Удалить поломку?", "Видалити поломку?"), existing.title, onDismiss = { confirmDelete = false }) {
         ui.repo.deleteBreakdown(existing.id); close()
     }
 }
@@ -390,20 +391,20 @@ private fun PhotoDialog(p: Photo, close: () -> Unit) {
     var view by remember { mutableStateOf(false) }
     val kmVal = if (km.isBlank()) null else parseKm(km)
     FormDialog(
-        title = "Фото",
+        title = tr("Фото", "Фото"),
         onDismiss = close,
         dirty = changed(caption, km),
         confirmEnabled = km.isBlank() || kmVal != null,
         onConfirm = { ui.repo.updatePhoto(p.copy(caption = caption.trim(), km = kmVal)); close() },
-        extra = { TextButton(onClick = { confirmDelete = true }) { Text("Удалить") } },
+        extra = { TextButton(onClick = { confirmDelete = true }) { Text(tr("Удалить", "Видалити")) } },
     ) {
         PhotoThumb(p.file, 240.dp, Modifier.fillMaxWidth(), maxSide = 800) { view = true }
         Text(Fmt.dateTime(p.time), style = MaterialTheme.typography.bodySmall)
-        OutlinedTextField(caption, { caption = it }, label = { Text("Подпись") }, modifier = Modifier.fillMaxWidth())
-        NumField(km, { km = it }, "Пробег", suffix = "км", decimal = false)
+        OutlinedTextField(caption, { caption = it }, label = { Text(tr("Подпись", "Підпис")) }, modifier = Modifier.fillMaxWidth())
+        NumField(km, { km = it }, tr("Пробег", "Пробіг"), suffix = "км", decimal = false)
     }
     if (view) PhotoViewer(p.file, caption, { view = false })
-    if (confirmDelete) ConfirmDialog("Удалить фото?", "Файл будет удалён.", onDismiss = { confirmDelete = false }) {
+    if (confirmDelete) ConfirmDialog(tr("Удалить фото?", "Видалити фото?"), tr("Файл будет удалён.", "Файл буде видалено."), onDismiss = { confirmDelete = false }) {
         ui.repo.deletePhoto(p); close()
     }
 }

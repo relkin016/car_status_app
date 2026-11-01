@@ -1,6 +1,7 @@
 package com.relkin.carstatus.data
 
 import android.content.Context
+import com.relkin.carstatus.util.tr
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.json.JSONArray
@@ -53,7 +54,7 @@ class Garage(private val ctx: Context) {
         val f = file
         if (f.exists()) runCatching { return fromJson(JSONObject(f.readText())) }
         created = true
-        return GarageState(listOf(GarageInfo(1, "Мой гараж", lastVehicle = 1)), listOf(VehicleRef(1, 1)), 1).also { save(it) }
+        return GarageState(listOf(GarageInfo(1, tr("Мой гараж", "Мій гараж"), lastVehicle = 1)), listOf(VehicleRef(1, 1)), 1).also { save(it) }
     }
 
     private fun save(st: GarageState) {

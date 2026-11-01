@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import com.relkin.carstatus.Prefs
+import com.relkin.carstatus.util.tr
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
@@ -71,7 +72,7 @@ class Obd(private val ctx: Context, private val prefs: Prefs, private val vehicl
         elm?.close(); elm = null
         _state.value = ObdState.Connecting
         try {
-            val dev = adapter?.getRemoteDevice(address) ?: error("Bluetooth недоступен")
+            val dev = adapter?.getRemoteDevice(address) ?: error(tr("Bluetooth недоступен", "Bluetooth недоступний"))
             adapter?.cancelDiscovery()
             val e = Elm327.connect(dev)
             elm = e
@@ -88,12 +89,12 @@ class Obd(private val ctx: Context, private val prefs: Prefs, private val vehicl
     }
 
     private suspend fun <T> use(block: suspend (Elm327) -> T): T = mutex.withLock {
-        val e = elm ?: error("Адаптер не подключён")
+        val e = elm ?: error(tr("Адаптер не подключён", "Адаптер не підключено"))
         try {
             block(e)
         } catch (t: java.io.IOException) {
             e.close(); elm = null
-            _state.value = ObdState.Failed("Связь потеряна: ${t.message}")
+            _state.value = ObdState.Failed(tr("Связь потеряна: ", "Зв'язок втрачено: ") + t.message)
             throw t
         }
     }
@@ -144,12 +145,12 @@ class Obd(private val ctx: Context, private val prefs: Prefs, private val vehicl
         "2" -> "SAE J1850 VPW"
         "3" -> "ISO 9141-2"
         "4" -> "ISO 14230-4 KWP (5 бод)"
-        "5" -> "ISO 14230-4 KWP (быстрая)"
-        "6" -> "CAN 11 бит 500 кбит/с"
-        "7" -> "CAN 29 бит 500 кбит/с"
-        "8" -> "CAN 11 бит 250 кбит/с"
-        "9" -> "CAN 29 бит 250 кбит/с"
+        "5" -> tr("ISO 14230-4 KWP (быстрая)", "ISO 14230-4 KWP (швидка)")
+        "6" -> tr("CAN 11 бит 500 кбит/с", "CAN 11 біт 500 кбіт/с")
+        "7" -> tr("CAN 29 бит 500 кбит/с", "CAN 29 біт 500 кбіт/с")
+        "8" -> tr("CAN 11 бит 250 кбит/с", "CAN 11 біт 250 кбіт/с")
+        "9" -> tr("CAN 29 бит 250 кбит/с", "CAN 29 біт 250 кбіт/с")
         "A" -> "SAE J1939 CAN"
-        else -> p.ifEmpty { "неизвестен" }
+        else -> p.ifEmpty { tr("неизвестен", "невідомий") }
     }
 }

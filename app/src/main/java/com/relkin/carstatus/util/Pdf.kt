@@ -9,6 +9,7 @@ import android.graphics.pdf.PdfDocument
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
+import com.relkin.carstatus.util.tr
 import java.io.OutputStream
 
 /** Документ отчёта: заголовок и блоки. Рисуется в PDF через [Pdf]. */
@@ -25,7 +26,7 @@ sealed interface Block {
     data class Col(val title: String, val weight: Float = 1f, val right: Boolean = false)
     data class Row(val cells: List<String>, val tone: Tone = Tone.NORMAL)
     /** Таблица; если у всех колонок пустые заголовки — без строки заголовка. */
-    data class Table(val cols: List<Col>, val rows: List<Row>, val empty: String = "Записей нет") : Block
+    data class Table(val cols: List<Col>, val rows: List<Row>, val empty: String = tr("Записей нет", "Записів немає")) : Block
 }
 
 /** A4 в пунктах, без сторонних библиотек: android.graphics.pdf.PdfDocument + StaticLayout. */
@@ -98,7 +99,7 @@ object Pdf {
             val p = paint(7.5f, MUTED)
             c.drawLine(M, H - 32f, W - M, H - 32f, Paint().apply { color = LINE; strokeWidth = 0.6f })
             c.draw(layout(doc.footer, p, CW - 60), M, H - 26f)
-            c.draw(layout("стр. $n", p, CW, right = true), M, H - 26f)
+            c.draw(layout(tr("стр. $n", "стор. $n"), p, CW, right = true), M, H - 26f)
         }
 
         fun finish() { page?.let { footer(); pdf.finishPage(it) }; page = null }

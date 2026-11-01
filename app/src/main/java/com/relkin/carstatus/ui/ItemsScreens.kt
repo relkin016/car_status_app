@@ -55,6 +55,7 @@ import com.relkin.carstatus.data.Item
 import com.relkin.carstatus.data.LogType
 import com.relkin.carstatus.data.Reports
 import com.relkin.carstatus.util.Fmt
+import com.relkin.carstatus.util.tr
 import java.time.LocalDate
 
 @Composable
@@ -64,14 +65,14 @@ fun ItemsScreen() {
     var edit by remember { mutableStateOf<Item?>(null) }
     var restore by remember { mutableStateOf(false) }
     SubScreen(
-        "Пункты ТО", ui::pop,
-        actions = { IconButton(onClick = { restore = true }) { Icon(Icons.Filled.RestartAlt, "Базовый список") } },
-        fab = { FloatingActionButton(onClick = { edit = Item(name = "", kmInterval = 10_000, dayInterval = 365) }) { Icon(Icons.Filled.Add, "Добавить") } },
+        tr("Пункты ТО", "Пункти ТО"), ui::pop,
+        actions = { IconButton(onClick = { restore = true }) { Icon(Icons.Filled.RestartAlt, tr("Базовый список", "Базовий список")) } },
+        fab = { FloatingActionButton(onClick = { edit = Item(name = "", kmInterval = 10_000, dayInterval = 365) }) { Icon(Icons.Filled.Add, tr("Добавить", "Додати")) } },
     ) { pad ->
         LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(bottom = 88.dp)) {
             item {
                 Text(
-                    "У каждого пункта два лимита — по пробегу и по времени; срабатывает тот, что наступит раньше. 0 — лимит не используется.",
+                    tr("У каждого пункта два лимита — по пробегу и по времени; срабатывает тот, что наступит раньше. 0 — лимит не используется.", "Кожен пункт має два ліміти — за пробігом і за часом; спрацьовує той, що настане раніше. 0 — ліміт не використовується."),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(16.dp),
                 )
@@ -83,8 +84,8 @@ fun ItemsScreen() {
                     leadingContent = { Icon(itemIcon(it.icon), null) },
                     trailingContent = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = { ui.repo.moveItem(it.id, -1) }) { Icon(Icons.Filled.KeyboardArrowUp, "Выше") }
-                            IconButton(onClick = { ui.repo.moveItem(it.id, 1) }) { Icon(Icons.Filled.KeyboardArrowDown, "Ниже") }
+                            IconButton(onClick = { ui.repo.moveItem(it.id, -1) }) { Icon(Icons.Filled.KeyboardArrowUp, tr("Выше", "Вище")) }
+                            IconButton(onClick = { ui.repo.moveItem(it.id, 1) }) { Icon(Icons.Filled.KeyboardArrowDown, tr("Ниже", "Нижче")) }
                             Switch(it.enabled, { v -> ui.repo.saveItem(it.copy(enabled = v)) })
                         }
                     },
@@ -96,15 +97,15 @@ fun ItemsScreen() {
     }
     edit?.let { ItemEditDialog(it) { edit = null } }
     if (restore) ConfirmDialog(
-        "Базовый список", "Добавить недостающие пункты из стандартного набора (масло, фильтры, тормоза…)? Ваши пункты останутся.",
-        confirm = "Добавить", onDismiss = { restore = false },
+        tr("Базовый список", "Базовий список"), tr("Добавить недостающие пункты из стандартного набора (масло, фильтры, тормоза…)? Ваши пункты останутся.", "Додати відсутні пункти зі стандартного набору (олива, фільтри, гальма…)? Ваші пункти залишаться."),
+        confirm = tr("Добавить", "Додати"), onDismiss = { restore = false },
     ) { ui.repo.restoreDefaultItems() }
 }
 
 fun limits(it: Item): String = listOfNotNull(
-    it.kmInterval.takeIf { v -> v > 0 }?.let { v -> "каждые ${Fmt.km(v)}" },
-    it.dayInterval.takeIf { v -> v > 0 }?.let { v -> if (v % 365 == 0L) "${v / 365} г." else Fmt.days(v) },
-).joinToString(" или ").ifEmpty { "лимиты не заданы" }
+    it.kmInterval.takeIf { v -> v > 0 }?.let { v -> tr("каждые ${Fmt.km(v)}", "кожні ${Fmt.km(v)}") },
+    it.dayInterval.takeIf { v -> v > 0 }?.let { v -> if (v % 365 == 0L) tr("${v / 365} г.", "${v / 365} р.") else Fmt.days(v) },
+).joinToString(tr(" или ", " або ")).ifEmpty { tr("лимиты не заданы", "ліміти не задано") }
 
 @Composable
 fun ItemEditDialog(item: Item, close: () -> Unit) {
@@ -121,7 +122,7 @@ fun ItemEditDialog(item: Item, close: () -> Unit) {
     val daysV = parseKm(days.ifBlank { "0" })
     val lastKmV = if (lastKm.isBlank()) null else parseKm(lastKm)
     FormDialog(
-        title = if (item.id == 0L) "Новый пункт ТО" else "Пункт ТО",
+        title = if (item.id == 0L) tr("Новый пункт ТО", "Новий пункт ТО") else tr("Пункт ТО", "Пункт ТО"),
         onDismiss = close,
         dirty = changed(name, icon, km, days, lastKm, lastDate, note),
         confirmEnabled = name.isNotBlank() && kmV != null && daysV != null && (lastKm.isBlank() || lastKmV != null),
@@ -129,23 +130,23 @@ fun ItemEditDialog(item: Item, close: () -> Unit) {
             ui.repo.saveItem(item.copy(name = name.trim(), icon = icon, kmInterval = kmV!!, dayInterval = daysV!!, lastKm = lastKmV, lastDate = lastDate?.toEpochDay(), note = note.trim()))
             close()
         },
-        extra = if (item.id != 0L) { { TextButton(onClick = { del = true }) { Text("Удалить") } } } else null,
+        extra = if (item.id != 0L) { { TextButton(onClick = { del = true }) { Text(tr("Удалить", "Видалити")) } } } else null,
     ) {
-        OutlinedTextField(name, { name = it }, label = { Text("Название") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(name, { name = it }, label = { Text(tr("Название", "Назва")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
         FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Defaults.icons.forEach { k ->
                 FilterChip(selected = icon == k, onClick = { icon = k }, label = { Icon(itemIcon(k), null, Modifier.size(18.dp)) })
             }
         }
-        NumField(km, { km = it }, "Лимит по пробегу", suffix = "км", decimal = false, hint = "0 — не учитывать")
-        NumField(days, { days = it }, "Лимит по времени", suffix = "дн.", decimal = false, hint = "365 — год, 730 — 2 года")
-        Text("Последнее обслуживание", style = MaterialTheme.typography.labelLarge)
-        NumField(lastKm, { lastKm = it }, "Пробег", suffix = "км", decimal = false)
+        NumField(km, { km = it }, tr("Лимит по пробегу", "Ліміт за пробігом"), suffix = "км", decimal = false, hint = tr("0 — не учитывать", "0 — не враховувати"))
+        NumField(days, { days = it }, tr("Лимит по времени", "Ліміт за часом"), suffix = tr("дн.", "дн."), decimal = false, hint = tr("365 — год, 730 — 2 года", "365 — рік, 730 — 2 роки"))
+        Text(tr("Последнее обслуживание", "Останнє обслуговування"), style = MaterialTheme.typography.labelLarge)
+        NumField(lastKm, { lastKm = it }, tr("Пробег", "Пробіг"), suffix = "км", decimal = false)
         if (lastDate != null) DateField(lastDate!!, { lastDate = it })
-        else OutlinedButton(onClick = { lastDate = LocalDate.now() }) { Text("Указать дату") }
-        OutlinedTextField(note, { note = it }, label = { Text("Заметка (артикул, допуск, объём)") }, modifier = Modifier.fillMaxWidth())
+        else OutlinedButton(onClick = { lastDate = LocalDate.now() }) { Text(tr("Указать дату", "Вказати дату")) }
+        OutlinedTextField(note, { note = it }, label = { Text(tr("Заметка (артикул, допуск, объём)", "Нотатка (артикул, допуск, об'єм)")) }, modifier = Modifier.fillMaxWidth())
     }
-    if (del) ConfirmDialog("Удалить пункт?", "История записей сохранится.", onDismiss = { del = false }) { ui.repo.deleteItem(item.id); close() }
+    if (del) ConfirmDialog(tr("Удалить пункт?", "Видалити пункт?"), tr("История записей сохранится.", "Історія записів збережеться."), onDismiss = { del = false }) { ui.repo.deleteItem(item.id); close() }
 }
 
 @Composable
@@ -157,34 +158,34 @@ fun ItemDetailScreen(id: Long) {
     val ih = Health.item(item, s.currentKm, rate)
     var edit by remember { mutableStateOf(false) }
     val history = s.log.filter { it.itemId == id }
-    SubScreen(item.name, ui::pop, actions = { IconButton(onClick = { edit = true }) { Icon(Icons.Filled.Edit, "Изменить") } }) { pad ->
+    SubScreen(item.name, ui::pop, actions = { IconButton(onClick = { edit = true }) { Icon(Icons.Filled.Edit, tr("Изменить", "Змінити")) } }) { pad ->
         LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(ih.percent?.let { "$it HP" } ?: "нет данных", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                        Text(ih.percent?.let { "$it HP" } ?: tr("нет данных", "немає даних"), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                         HpBar(ih.hp, height = 14.dp)
                         Text(dueText(ih))
                         HorizontalDivider()
                         Row {
-                            LabeledValue("Лимиты", limits(item), Modifier.weight(1f))
+                            LabeledValue(tr("Лимиты", "Ліміти"), limits(item), Modifier.weight(1f))
                         }
                         Row {
-                            LabeledValue("Последний раз", item.lastDate?.let { Fmt.day(it) } ?: "—", Modifier.weight(1f))
-                            LabeledValue("На пробеге", item.lastKm?.let { Fmt.km(it) } ?: "—", Modifier.weight(1f))
+                            LabeledValue(tr("Последний раз", "Останній раз"), item.lastDate?.let { Fmt.day(it) } ?: "—", Modifier.weight(1f))
+                            LabeledValue(tr("На пробеге", "На пробігу"), item.lastKm?.let { Fmt.km(it) } ?: "—", Modifier.weight(1f))
                         }
-                        ih.dueKm?.let { LabeledValue("Следующее по пробегу", Fmt.km(it)) }
+                        ih.dueKm?.let { LabeledValue(tr("Следующее по пробегу", "Наступне за пробігом"), Fmt.km(it)) }
                         if (item.note.isNotBlank()) Text(item.note, style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
             item {
                 Button(onClick = { ui.edit = Edit.Log(null, LogType.SERVICE, item) }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Обслужено — записать")
+                    Text(tr("Обслужено — записать", "Обслуговано — записати"))
                 }
             }
-            item { Text("История", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary) }
-            if (history.isEmpty()) item { Empty("Записей пока нет") }
+            item { Text(tr("История", "Історія"), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary) }
+            if (history.isEmpty()) item { Empty(tr("Записей пока нет", "Записів поки немає")) }
             items(history, key = { it.id }) { e ->
                 ListItem(
                     headlineContent = { Text(Reports.entryTitle(s, e)) },
@@ -230,34 +231,34 @@ fun SetupScreen() {
             Modifier.fillMaxSize().padding(pad).padding(24.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(if (first) "🚗 Авто·Статус" else "Новый транспорт", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+            Text(if (first) "🚗 Авто·Статус" else tr("Новый транспорт", "Новий транспорт"), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             Text(
-                if (first) "Всё хранится только на телефоне: без аккаунтов и интернета. Расскажите о транспорте — и приложение начнёт следить за его «здоровьем». Позже можно добавить ещё транспорт и гаражи."
-                else "Гараж «${gs.currentGarage?.name.orEmpty()}». Выберите вид — от него зависят расходники, единицы и квесты.",
+                if (first) tr("Всё хранится только на телефоне: без аккаунтов и интернета. Расскажите о транспорте — и приложение начнёт следить за его «здоровьем». Позже можно добавить ещё транспорт и гаражи.", "Усе зберігається лише на телефоні: без акаунтів та інтернету. Розкажіть про транспорт — і застосунок почне стежити за його «здоров'ям». Пізніше можна додати ще транспорт і гаражі.")
+                else tr("Гараж «${gs.currentGarage?.name.orEmpty()}». Выберите вид — от него зависят расходники, единицы и квесты.", "Гараж «${gs.currentGarage?.name.orEmpty()}». Оберіть вид — від нього залежать витратні матеріали, одиниці й квести."),
                 style = MaterialTheme.typography.bodyMedium,
             )
-            Text("Вид транспорта", style = MaterialTheme.typography.labelLarge)
+            Text(tr("Вид транспорта", "Вид транспорту"), style = MaterialTheme.typography.labelLarge)
             KindPicker(kind) { kind = it }
-            OutlinedTextField(name, { name = it }, label = { Text("Название (необязательно)") }, placeholder = { Text(kind.defaultTitle) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(make, { make = it }, label = { Text("Марка") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(model, { model = it }, label = { Text("Модель") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(year, { year = it }, label = { Text("Год выпуска") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            NumField(km, { km = it }, "Текущий пробег", suffix = "км", decimal = false, hint = if (kind.isCar || kind == VehicleKind.MOTO) null else "Если нет одометра — по велокомпьютеру или приложению; можно 0")
+            OutlinedTextField(name, { name = it }, label = { Text(tr("Название (необязательно)", "Назва (необов'язково)")) }, placeholder = { Text(kind.defaultTitle) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(make, { make = it }, label = { Text(tr("Марка", "Марка")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(model, { model = it }, label = { Text(tr("Модель", "Модель")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(year, { year = it }, label = { Text(tr("Год выпуска", "Рік випуску")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            NumField(km, { km = it }, tr("Текущий пробег", "Поточний пробіг"), suffix = "км", decimal = false, hint = if (kind.isCar || kind == VehicleKind.MOTO) null else tr("Если нет одометра — по велокомпьютеру или приложению; можно 0", "Якщо немає одометра — за велокомп'ютером або застосунком; можна 0"))
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { serviced = !serviced }) {
                 Checkbox(serviced, { serviced = it })
-                Text("Считать, что всё обслужено сейчас (поправите потом по каждому пункту)")
+                Text(tr("Считать, что всё обслужено сейчас (поправите потом по каждому пункту)", "Вважати, що все обслуговано зараз (виправите потім для кожного пункту)"))
             }
             Spacer(Modifier.height(8.dp))
             Button(
                 onClick = { ui.repo.setup(Car(name = name.trim(), make = make.trim(), model = model.trim(), year = year.trim(), kind = kind), kmV!!, serviced) },
                 enabled = kmV != null, modifier = Modifier.fillMaxWidth(),
-            ) { Text("Начать") }
+            ) { Text(tr("Начать", "Почати")) }
             if (!first) OutlinedButton(
                 onClick = { ui.garage.deleteVehicle(gs.current) },
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("Отмена") }
+            ) { Text(tr("Отмена", "Скасувати")) }
             Text(
-                "В список сразу попадут ${defaults.size} расходников и узлов: " + defaults.take(4).joinToString { it.name.lowercase() } + "… Его можно редактировать.",
+                tr("В список сразу попадут ${defaults.size} расходников и узлов: ", "До списку одразу потраплять ${defaults.size} витратних матеріалів і вузлів: ") + defaults.take(4).joinToString { it.name.lowercase() } + tr("… Его можно редактировать.", "… Його можна редагувати."),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }

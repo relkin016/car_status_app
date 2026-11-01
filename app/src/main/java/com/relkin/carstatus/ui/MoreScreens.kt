@@ -13,6 +13,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import com.relkin.carstatus.util.Doc
+import com.relkin.carstatus.util.Lang
 import com.relkin.carstatus.util.Pdf
 import android.os.Build
 import android.provider.Settings
@@ -86,6 +87,7 @@ import com.relkin.carstatus.data.Quests
 import com.relkin.carstatus.data.Reports
 import com.relkin.carstatus.notify.Reminders
 import com.relkin.carstatus.util.Fmt
+import com.relkin.carstatus.util.tr
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -102,7 +104,7 @@ fun MoreScreen() {
         uri ?: return@rememberLauncherForActivityResult
         scope.launch {
             val r = withContext(Dispatchers.IO) { runCatching { Backup.export(ctx, ui.garage, uri) } }
-            ui.toast(r.fold({ "Копия сохранена (фото: $it)" }, { "Ошибка: ${it.message}" }))
+            ui.toast(r.fold({ tr("Копия сохранена (фото: $it)", "Копію збережено (фото: $it)") }, { tr("Ошибка: ${it.message}", "Помилка: ${it.message}") }))
         }
     }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> restoreAsk = uri }
@@ -119,30 +121,30 @@ fun MoreScreen() {
         )
     }
 
-    TabScaffold("Ещё") { pad ->
+    TabScaffold(tr("Ещё", "Ще")) { pad ->
         LazyColumn(Modifier.fillMaxSize().padding(pad)) {
-            item { SectionTitle("Гараж") }
-            item { Entry(Icons.Filled.Warehouse, "Гаражи и транспорт", "Гаражей: ${gs.garages.size} · транспорта: ${gs.vehicles.size} · уведомления по всем") { ui.push(Route.Garage) } }
+            item { SectionTitle(tr("Гараж", "Гараж")) }
+            item { Entry(Icons.Filled.Warehouse, tr("Гаражи и транспорт", "Гаражі й транспорт"), tr("Гаражей: ${gs.garages.size} · транспорта: ${gs.vehicles.size} · уведомления по всем", "Гаражів: ${gs.garages.size} · транспорту: ${gs.vehicles.size} · сповіщення з усіх")) { ui.push(Route.Garage) } }
             item { SectionTitle(s.car.label) }
-            item { Entry(Icons.Filled.DirectionsCar, "Профиль", "Вид транспорта, марка, модель, VIN, номер") { ui.push(Route.Car) } }
-            item { Entry(Icons.Filled.Tune, "Расходники и узлы", "Список, интервалы по пробегу и времени") { ui.push(Route.Items) } }
-            item { Entry(Icons.Filled.ReportProblem, "Список поломок", "Что нужно починить — чек-лист") { ui.push(Route.Breakdowns) } }
-            if (Quests.of(s.kind).isNotEmpty()) item { Entry(Icons.Filled.EmojiEvents, "Сезонные квесты", "Подготовка к зиме и сезону") { ui.push(Route.Quests) } }
-            item { Entry(Icons.Filled.PhotoLibrary, "Фото-журнал") { ui.push(Route.Photos) } }
-            item { Entry(Icons.Filled.Speed, "Показания одометра") { ui.push(Route.Odo) } }
-            item { SectionTitle("Отчёты") }
-            item { Entry(Icons.Filled.History, "История для покупателя", "Полная история обслуживания одним документом (PDF)") { ui.push(Route.Report(ReportKind.BUYER)) } }
-            item { Entry(Icons.AutoMirrored.Filled.ReceiptLong, "Выписка расходов", "Как банковская: операции, итоги, цена км (PDF)") { ui.push(Route.Report(ReportKind.STATEMENT)) } }
-            item { SectionTitle("Данные") }
-            item { Entry(Icons.Filled.Backup, "Экспорт базы (резервная копия)", "Файл .zip: все гаражи, транспорт и фото") { exportLauncher.launch("carstatus-${LocalDate.now()}.zip") } }
-            item { Entry(Icons.Filled.Restore, "Восстановить из копии", "Текущие данные будут заменены") { importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) } }
-            item { SectionTitle("Приложение") }
-            item { Entry(Icons.Filled.Share, "Поделиться приложением (APK)", "Отправить установочный файл другу") { shareApk(ctx, ui) } }
-            item { Entry(Icons.Filled.Settings, "Настройки", "Уведомления, свайпы, тема") { ui.push(Route.Settings) } }
+            item { Entry(Icons.Filled.DirectionsCar, tr("Профиль", "Профіль"), tr("Вид транспорта, марка, модель, VIN, номер", "Вид транспорту, марка, модель, VIN, номер")) { ui.push(Route.Car) } }
+            item { Entry(Icons.Filled.Tune, tr("Расходники и узлы", "Витратні матеріали й вузли"), tr("Список, интервалы по пробегу и времени", "Список, інтервали за пробігом і часом")) { ui.push(Route.Items) } }
+            item { Entry(Icons.Filled.ReportProblem, tr("Список поломок", "Список поломок"), tr("Что нужно починить — чек-лист", "Що треба полагодити — чек-лист")) { ui.push(Route.Breakdowns) } }
+            if (Quests.of(s.kind).isNotEmpty()) item { Entry(Icons.Filled.EmojiEvents, tr("Сезонные квесты", "Сезонні квести"), tr("Подготовка к зиме и сезону", "Підготовка до зими й сезону")) { ui.push(Route.Quests) } }
+            item { Entry(Icons.Filled.PhotoLibrary, tr("Фото-журнал", "Фотожурнал")) { ui.push(Route.Photos) } }
+            item { Entry(Icons.Filled.Speed, tr("Показания одометра", "Показники одометра")) { ui.push(Route.Odo) } }
+            item { SectionTitle(tr("Отчёты", "Звіти")) }
+            item { Entry(Icons.Filled.History, tr("История для покупателя", "Історія для покупця"), tr("Полная история обслуживания одним документом (PDF)", "Повна історія обслуговування одним документом (PDF)")) { ui.push(Route.Report(ReportKind.BUYER)) } }
+            item { Entry(Icons.AutoMirrored.Filled.ReceiptLong, tr("Выписка расходов", "Виписка витрат"), tr("Как банковская: операции, итоги, цена км (PDF)", "Як банківська: операції, підсумки, ціна км (PDF)")) { ui.push(Route.Report(ReportKind.STATEMENT)) } }
+            item { SectionTitle(tr("Данные", "Дані")) }
+            item { Entry(Icons.Filled.Backup, tr("Экспорт базы (резервная копия)", "Експорт бази (резервна копія)"), tr("Файл .zip: все гаражи, транспорт и фото", "Файл .zip: усі гаражі, транспорт і фото")) { exportLauncher.launch("carstatus-${LocalDate.now()}.zip") } }
+            item { Entry(Icons.Filled.Restore, tr("Восстановить из копии", "Відновити з копії"), tr("Текущие данные будут заменены", "Поточні дані буде замінено")) { importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) } }
+            item { SectionTitle(tr("Приложение", "Застосунок")) }
+            item { Entry(Icons.Filled.Share, tr("Поделиться приложением (APK)", "Поділитися застосунком (APK)"), tr("Отправить установочный файл другу", "Надіслати інсталяційний файл другові")) { shareApk(ctx, ui) } }
+            item { Entry(Icons.Filled.Settings, tr("Настройки", "Налаштування"), tr("Уведомления, язык, тема", "Сповіщення, мова, тема")) { ui.push(Route.Settings) } }
             item {
                 ListItem(
                     headlineContent = { Text("Авто·Статус ${BuildConfig.VERSION_NAME}") },
-                    supportingContent = { Text("Офлайн, без аккаунтов. Все данные — только на этом телефоне.") },
+                    supportingContent = { Text(tr("Офлайн, без аккаунтов. Все данные — только на этом телефоне.", "Офлайн, без акаунтів. Усі дані — лише на цьому телефоні.")) },
                     leadingContent = { Icon(Icons.Filled.Info, null) },
                 )
             }
@@ -150,13 +152,13 @@ fun MoreScreen() {
     }
     restoreAsk?.let { uri ->
         ConfirmDialog(
-            "Восстановить из копии?", "Все гаражи, записи и фото будут заменены данными из файла.",
-            confirm = "Восстановить", onDismiss = { restoreAsk = null },
+            tr("Восстановить из копии?", "Відновити з копії?"), tr("Все гаражи, записи и фото будут заменены данными из файла.", "Усі гаражі, записи й фото буде замінено даними з файлу."),
+            confirm = tr("Восстановить", "Відновити"), onDismiss = { restoreAsk = null },
         ) {
             // ui.scope: после восстановления экраны пересоздаются, а сообщение показать нужно
             ui.scope.launch {
                 val r = withContext(Dispatchers.IO) { runCatching { Backup.import(ctx, ui.garage, uri) } }
-                ui.toast(r.fold({ "Данные восстановлены" }, { "Ошибка: ${it.message}" }))
+                ui.toast(r.fold({ tr("Данные восстановлены", "Дані відновлено") }, { tr("Ошибка: ${it.message}", "Помилка: ${it.message}") }))
             }
         }
     }
@@ -173,8 +175,8 @@ private fun shareApk(ctx: Context, ui: Ui) {
             .putExtra(Intent.EXTRA_STREAM, uri).putExtra(Intent.EXTRA_TITLE, out.name)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         send.clipData = ClipData.newRawUri(out.name, uri)
-        ctx.startActivity(Intent.createChooser(send, "Поделиться приложением"))
-    }.onFailure { ui.toast("Не удалось: ${it.message}") }
+        ctx.startActivity(Intent.createChooser(send, tr("Поделиться приложением", "Поділитися застосунком")))
+    }.onFailure { ui.toast(tr("Не удалось: ${it.message}", "Не вдалося: ${it.message}")) }
 }
 
 private fun sharePdf(ctx: Context, f: File) {
@@ -183,7 +185,7 @@ private fun sharePdf(ctx: Context, f: File) {
         .putExtra(Intent.EXTRA_STREAM, uri).putExtra(Intent.EXTRA_SUBJECT, f.name)
         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     send.clipData = ClipData.newRawUri(f.name, uri)
-    ctx.startActivity(Intent.createChooser(send, "Отправить документ"))
+    ctx.startActivity(Intent.createChooser(send, tr("Отправить документ", "Надіслати документ")))
 }
 
 /** Готовый PDF и его страницы картинками для предпросмотра. */
@@ -231,26 +233,26 @@ fun ReportScreen(kind: ReportKind) {
                 }
                 renderPdf(ctx, name, doc)
             }
-        }.onFailure { ui.toast("Не удалось сформировать PDF: ${it.message}") }.getOrNull()
+        }.onFailure { ui.toast(tr("Не удалось сформировать PDF: ${it.message}", "Не вдалося сформувати PDF: ${it.message}")) }.getOrNull()
     }
     val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
         val f = pdf?.file
         if (uri == null || f == null) return@rememberLauncherForActivityResult
         scope.launch {
             val r = withContext(Dispatchers.IO) { runCatching { ctx.contentResolver.openOutputStream(uri)!!.use { out -> f.inputStream().use { it.copyTo(out) } } } }
-            ui.toast(r.fold({ "Сохранено" }, { "Ошибка: ${it.message}" }))
+            ui.toast(r.fold({ tr("Сохранено", "Збережено") }, { tr("Ошибка: ${it.message}", "Помилка: ${it.message}") }))
         }
     }
-    SubScreen(if (kind == ReportKind.BUYER) "История для покупателя" else "Выписка расходов", ui::pop) { pad ->
+    SubScreen(if (kind == ReportKind.BUYER) tr("История для покупателя", "Історія для покупця") else tr("Выписка расходов", "Виписка витрат"), ui::pop) { pad ->
         Column(Modifier.fillMaxSize().padding(pad).padding(horizontal = 12.dp)) {
             if (kind == ReportKind.BUYER) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { ui.prefs.reportCosts.set(1 - withCosts) }) {
-                Checkbox(withCosts == 1, { ui.prefs.reportCosts.set(if (it) 1 else 0) }); Text("Показывать стоимость работ")
+                Checkbox(withCosts == 1, { ui.prefs.reportCosts.set(if (it) 1 else 0) }); Text(tr("Показывать стоимость работ", "Показувати вартість робіт"))
             } else Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Period.entries.forEach { p -> FilterChip(period == p, { PeriodState.period = p }, label = { Text(p.label) }) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                Button(onClick = { pdf?.let { sharePdf(ctx, it.file) } }, enabled = pdf != null, modifier = Modifier.weight(1f)) { Icon(Icons.Filled.Share, null); Spacer(Modifier.padding(4.dp)); Text("Отправить") }
-                OutlinedButton(onClick = { save.launch(name) }, enabled = pdf != null, modifier = Modifier.weight(1f)) { Icon(Icons.Filled.Save, null); Spacer(Modifier.padding(4.dp)); Text("Сохранить PDF") }
+                Button(onClick = { pdf?.let { sharePdf(ctx, it.file) } }, enabled = pdf != null, modifier = Modifier.weight(1f)) { Icon(Icons.Filled.Share, null); Spacer(Modifier.padding(4.dp)); Text(tr("Отправить", "Надіслати")) }
+                OutlinedButton(onClick = { save.launch(name) }, enabled = pdf != null, modifier = Modifier.weight(1f)) { Icon(Icons.Filled.Save, null); Spacer(Modifier.padding(4.dp)); Text(tr("Сохранить PDF", "Зберегти PDF")) }
             }
             val pages = pdf?.pages
             if (pages == null) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -271,11 +273,11 @@ fun BreakdownsScreen() {
     val s by ui.repo.snap.collectAsState()
     val open = s.breakdowns.filter { !it.done }
     val done = s.breakdowns.filter { it.done }
-    SubScreen("Список поломок", ui::pop, fab = { FloatingActionButton(onClick = { ui.edit = Edit.BreakdownE(null) }) { Icon(Icons.Filled.Add, "Добавить") } }) { pad ->
+    SubScreen(tr("Список поломок", "Список поломок"), ui::pop, fab = { FloatingActionButton(onClick = { ui.edit = Edit.BreakdownE(null) }) { Icon(Icons.Filled.Add, tr("Добавить", "Додати")) } }) { pad ->
         LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(bottom = 88.dp)) {
-            if (s.breakdowns.isEmpty()) item { Empty("Стук, скрип, не работает стеклоподъёмник? Запишите — и отмечайте по мере ремонта") }
+            if (s.breakdowns.isEmpty()) item { Empty(tr("Стук, скрип, не работает стеклоподъёмник? Запишите — и отмечайте по мере ремонта", "Стукіт, скрип, не працює склопідіймач? Запишіть — і позначайте в міру ремонту")) }
             items(open, key = { it.id }) { BreakdownRow(it) }
-            if (done.isNotEmpty()) item { SectionTitle("Исправлено (${done.size})") }
+            if (done.isNotEmpty()) item { SectionTitle(tr("Исправлено (${done.size})", "Виправлено (${done.size})")) }
             items(done, key = { it.id }) { BreakdownRow(it) }
         }
     }
@@ -291,9 +293,9 @@ private fun BreakdownRow(b: Breakdown) {
         supportingContent = {
             Text(
                 listOfNotNull(
-                    if (b.done) null else listOf("терпит", "скоро", "срочно")[b.priority.coerceIn(0, 2)],
+                    if (b.done) null else listOf(tr("терпит", "терпить"), tr("скоро", "скоро"), tr("срочно", "терміново"))[b.priority.coerceIn(0, 2)],
                     Fmt.day(b.createdDate), b.createdKm?.let { Fmt.km(it) },
-                    b.doneDate?.let { "исправлено ${Fmt.day(it)}" }, b.note.takeIf { it.isNotBlank() },
+                    b.doneDate?.let { tr("исправлено ${Fmt.day(it)}", "виправлено ${Fmt.day(it)}") }, b.note.takeIf { it.isNotBlank() },
                 ).joinToString(" · "),
             )
         },
@@ -309,7 +311,7 @@ fun QuestsScreen() {
     val s by ui.repo.snap.collectAsState()
     val today = LocalDate.now()
     val quests = Quests.of(s.kind)
-    SubScreen("Сезонные квесты", ui::pop) { pad ->
+    SubScreen(tr("Сезонные квесты", "Сезонні квести"), ui::pop) { pad ->
         LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             // активные — сверху
             items(quests.sortedByDescending { it.isActive(today) }, key = { it.key }) { q ->
@@ -320,12 +322,12 @@ fun QuestsScreen() {
                         Text("${q.emoji} ${q.title}", style = MaterialTheme.typography.titleMedium)
                         Text(
                             "Сезон: ${q.start.dayOfMonth}.${"%02d".format(q.start.monthValue)} — ${q.end.dayOfMonth}.${"%02d".format(q.end.monthValue)}" +
-                                if (q.isActive(today)) " · идёт сейчас" else "",
+                                if (q.isActive(today)) tr(" · идёт сейчас", " · триває зараз") else "",
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(Modifier.height(8.dp))
                         LinearProgressIndicator(progress = { done.toFloat() / q.steps.size }, modifier = Modifier.fillMaxWidth().height(8.dp))
-                        Text("$done из ${q.steps.size}" + if (done == q.steps.size) " — квест пройден! 🏆" else "", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 4.dp))
+                        Text("$done " + tr("из", "з") + " ${q.steps.size}" + if (done == q.steps.size) tr(" — квест пройден! 🏆", " — квест пройдено! 🏆") else "", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(top = 4.dp))
                         q.steps.forEach { st ->
                             val key = q.stepKey(season, st)
                             val checked = key in s.questDone
@@ -341,12 +343,12 @@ fun QuestsScreen() {
                 }
             }
             item {
-                Text("💡 Когда выгодно покупать", style = MaterialTheme.typography.titleMedium)
+                Text(tr("💡 Когда выгодно покупать", "💡 Коли вигідно купувати"), style = MaterialTheme.typography.titleMedium)
             }
             items(com.relkin.carstatus.data.Tips.of(s.kind), key = { "tip" + it.key }) { t ->
-                val months = t.months.sorted().joinToString { java.time.Month.of(it).getDisplayName(java.time.format.TextStyle.SHORT_STANDALONE, java.util.Locale.forLanguageTag("ru")) }
+                val months = t.months.sorted().joinToString { java.time.Month.of(it).getDisplayName(java.time.format.TextStyle.SHORT_STANDALONE, com.relkin.carstatus.util.Lang.locale) }
                 ListItem(
-                    headlineContent = { Text(t.title + if (t.isActive(today)) " · сейчас" else "") },
+                    headlineContent = { Text(t.title + if (t.isActive(today)) tr(" · сейчас", " · зараз") else "") },
                     supportingContent = { Text("$months. ${t.text}") },
                 )
             }
@@ -362,11 +364,11 @@ fun CarScreen() {
     var purchaseKm by remember { mutableStateOf(c.purchaseKm?.toString() ?: "") }
     var kmMonth by remember { mutableStateOf(c.kmPerMonth.takeIf { it > 0 }?.toString() ?: "") }
     val kmMonthV = if (kmMonth.isBlank()) 0 else parseKm(kmMonth)?.toInt()
-    SubScreen("Профиль", ui::pop, actions = {
+    SubScreen(tr("Профиль", "Профіль"), ui::pop, actions = {
         androidx.compose.material3.TextButton(enabled = kmMonthV != null, onClick = {
             ui.repo.saveCar(car.copy(purchaseKm = parseKm(purchaseKm), kmPerMonth = kmMonthV ?: 0))
-            ui.toast("Сохранено"); ui.pop()
-        }) { Text("Сохранить") }
+            ui.toast(tr("Сохранено", "Збережено")); ui.pop()
+        }) { Text(tr("Сохранить", "Зберегти")) }
     }) { pad ->
         Column(Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             @Composable
@@ -374,25 +376,25 @@ fun CarScreen() {
                 OutlinedTextField(v, set, label = { Text(label) }, singleLine = true, modifier = Modifier.fillMaxWidth())
             KindPicker(car.kind) { car = car.copy(kind = it) }
             if (car.kind != c.kind) Text(
-                "Сменятся единицы и квесты. Список расходников останется прежним — недостающие пункты нового вида можно добавить в «Расходники и узлы».",
+                tr("Сменятся единицы и квесты. Список расходников останется прежним — недостающие пункты нового вида можно добавить в «Расходники и узлы».", "Зміняться одиниці й квести. Список витратних матеріалів залишиться попереднім — відсутні пункти нового виду можна додати в «Витратні матеріали й вузли»."),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            F("Название (как показывать)", car.name) { car = car.copy(name = it) }
-            F("Марка", car.make) { car = car.copy(make = it) }
-            F("Модель", car.model) { car = car.copy(model = it) }
-            F("Год выпуска", car.year) { car = car.copy(year = it) }
-            F(if (car.kind.isCar) "VIN" else "VIN / серийный номер рамы", car.vin) { car = car.copy(vin = it.uppercase()) }
-            if (car.kind.isCar || car.kind == com.relkin.carstatus.data.VehicleKind.MOTO) F("Госномер", car.plate) { car = car.copy(plate = it.uppercase()) }
-            if (car.kind != com.relkin.carstatus.data.VehicleKind.BICYCLE) F(if (car.kind.energy == com.relkin.carstatus.data.Energy.ELECTRIC) "Мотор / батарея (кВт·ч)" else "Двигатель", car.engine) { car = car.copy(engine = it) }
-            if (car.kind.energy == com.relkin.carstatus.data.Energy.FUEL) F("Топливо", car.fuel) { car = car.copy(fuel = it) }
+            F(tr("Название (как показывать)", "Назва (як показувати)"), car.name) { car = car.copy(name = it) }
+            F(tr("Марка", "Марка"), car.make) { car = car.copy(make = it) }
+            F(tr("Модель", "Модель"), car.model) { car = car.copy(model = it) }
+            F(tr("Год выпуска", "Рік випуску"), car.year) { car = car.copy(year = it) }
+            F(if (car.kind.isCar) "VIN" else tr("VIN / серийный номер рамы", "VIN / серійний номер рами"), car.vin) { car = car.copy(vin = it.uppercase()) }
+            if (car.kind.isCar || car.kind == com.relkin.carstatus.data.VehicleKind.MOTO) F(tr("Госномер", "Держномер"), car.plate) { car = car.copy(plate = it.uppercase()) }
+            if (car.kind != com.relkin.carstatus.data.VehicleKind.BICYCLE) F(if (car.kind.energy == com.relkin.carstatus.data.Energy.ELECTRIC) tr("Мотор / батарея (кВт·ч)", "Мотор / батарея (кВт·год)") else tr("Двигатель", "Двигун"), car.engine) { car = car.copy(engine = it) }
+            if (car.kind.energy == com.relkin.carstatus.data.Energy.FUEL) F(tr("Топливо", "Пальне"), car.fuel) { car = car.copy(fuel = it) }
             NumField(
-                kmMonth, { kmMonth = it }, "Пробег в месяц, пока мало истории", suffix = "км", decimal = false,
-                hint = "Пусто — ${car.kind.kmPerMonth} км (типично для вида). Когда наберётся 2+ недели показаний, считается автоматически",
+                kmMonth, { kmMonth = it }, tr("Пробег в месяц, пока мало истории", "Пробіг на місяць, поки мало історії"), suffix = "км", decimal = false,
+                hint = tr("Пусто — ${car.kind.kmPerMonth} км (типично для вида). Когда наберётся 2+ недели показаний, считается автоматически", "Порожньо — ${car.kind.kmPerMonth} км (типово для виду). Коли набереться 2+ тижні показників, рахується автоматично"),
             )
-            Text("Покупка", style = MaterialTheme.typography.labelLarge)
-            if (car.purchaseDate != null) DateField(LocalDate.ofEpochDay(car.purchaseDate!!), { car = car.copy(purchaseDate = it.toEpochDay()) }, "Дата покупки")
-            else OutlinedButton(onClick = { car = car.copy(purchaseDate = LocalDate.now().toEpochDay()) }) { Text("Указать дату покупки") }
-            NumField(purchaseKm, { purchaseKm = it }, "Пробег при покупке", suffix = "км", decimal = false)
+            Text(tr("Покупка", "Купівля"), style = MaterialTheme.typography.labelLarge)
+            if (car.purchaseDate != null) DateField(LocalDate.ofEpochDay(car.purchaseDate!!), { car = car.copy(purchaseDate = it.toEpochDay()) }, tr("Дата покупки", "Дата купівлі"))
+            else OutlinedButton(onClick = { car = car.copy(purchaseDate = LocalDate.now().toEpochDay()) }) { Text(tr("Указать дату покупки", "Вказати дату купівлі")) }
+            NumField(purchaseKm, { purchaseKm = it }, tr("Пробег при покупке", "Пробіг під час купівлі"), suffix = "км", decimal = false)
         }
     }
 }
@@ -411,57 +413,66 @@ fun SettingsScreen() {
     val tipMode by p.tipMode.state.collectAsState()
     val time by p.checkTime.state.collectAsState()
     val currency by p.currency.state.collectAsState()
+    val lang by p.lang.state.collectAsState()
     var pickTime by remember { mutableStateOf(false) }
     var testMode by remember { mutableStateOf(1) }
 
-    SubScreen("Настройки", ui::pop) { pad ->
+    SubScreen(tr("Настройки", "Налаштування"), ui::pop) { pad ->
         Column(Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("Интерфейс", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            Text(tr("Интерфейс", "Інтерфейс"), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Переключать вкладки свайпом")
-                    Text("Листайте влево-вправо между Статусом, Журналом, Расходами…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(tr("Переключать вкладки свайпом", "Перемикати вкладки свайпом"))
+                    Text(tr("Листайте влево-вправо между Статусом, Журналом, Расходами…", "Гортайте вліво-вправо між Статусом, Журналом, Витратами…"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Switch(swipe == 1, { p.swipeNav.set(if (it) 1 else 0) })
             }
-            Text("Тема")
-            Segmented(listOf(0 to "Системная", 1 to "Светлая", 2 to "Тёмная"), theme, p.theme::set)
+            Text(tr("Язык", "Мова"))
+            Segmented(listOf(Lang.AUTO to tr("Как в системе", "Як у системі"), Lang.RU to "Русский", Lang.UK to "Українська"), lang, { v ->
+                if (v == lang) return@Segmented
+                p.lang.set(v)
+                Lang.apply(v)
+                Reminders.createChannels(ctx)
+                ctx.findActivity()?.recreate()
+            })
+            Text(tr("Тема", "Тема"))
+            Segmented(listOf(0 to tr("Системная", "Системна"), 1 to tr("Светлая", "Світла"), 2 to tr("Тёмная", "Темна")), theme, p.theme::set)
             if (Build.VERSION.SDK_INT >= 31) Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Цвета обоев (Material You)", Modifier.weight(1f)); Switch(dynamic == 1, { p.dynamicColor.set(if (it) 1 else 0) })
+                Text(tr("Цвета обоев (Material You)", "Кольори шпалер (Material You)"), Modifier.weight(1f)); Switch(dynamic == 1, { p.dynamicColor.set(if (it) 1 else 0) })
             }
-            OutlinedTextField(currency, { p.currency.set(it); Fmt.currency = it }, label = { Text("Валюта") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(currency, { p.currency.set(it); Fmt.currency = it }, label = { Text(tr("Валюта", "Валюта")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
 
             HorizontalDivider()
-            Text("Уведомления", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+            Text(tr("Уведомления", "Сповіщення"), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
             if (!Reminders.canNotify(ctx)) OutlinedButton(onClick = {
                 ctx.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName))
-            }) { Text("Уведомления запрещены — открыть настройки") }
+            }) { Text(tr("Уведомления запрещены — открыть настройки", "Сповіщення заборонено — відкрити налаштування")) }
             if (!Reminders.canFullScreen(ctx) && listOf(hpMode, odoMode, questMode, tipMode).contains(2)) OutlinedButton(onClick = {
                 ctx.startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, android.net.Uri.parse("package:" + ctx.packageName)))
-            }) { Text("Разрешить полноэкранный будильник") }
+            }) { Text(tr("Разрешить полноэкранный будильник", "Дозволити повноекранний будильник")) }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Время ежедневной проверки", Modifier.weight(1f))
+                Text(tr("Время ежедневной проверки", "Час щоденної перевірки"), Modifier.weight(1f))
                 OutlinedButton(onClick = { pickTime = true }) { Text(Fmt.hm(time)) }
             }
-            Text("Износ узла (HP ниже порога)")
+            Text(tr("Износ узла (HP ниже порога)", "Знос вузла (HP нижче порогу)"))
             ModeSelector(hpMode, p.hpMode::set)
-            PrefNum(p.hpThreshold, "Порог HP", "%", 1..99, "Уведомить, когда ресурс узла опустится до этого значения")
-            Text("Напоминание ввести пробег")
+            PrefNum(p.hpThreshold, tr("Порог HP", "Поріг HP"), "%", 1..99, tr("Уведомить, когда ресурс узла опустится до этого значения", "Сповістити, коли ресурс вузла опуститься до цього значення"))
+            Text(tr("Напоминание ввести пробег", "Нагадування ввести пробіг"))
             ModeSelector(odoMode, p.odoMode::set)
-            PrefNum(p.odoDays, "Если пробег не обновляли", "дн.", 1..90)
-            Text("Сезонные квесты")
+            PrefNum(p.odoDays, tr("Если пробег не обновляли", "Якщо пробіг не оновлювали"), tr("дн.", "дн."), 1..90)
+            Text(tr("Сезонные квесты", "Сезонні квести"))
             ModeSelector(questMode, p.questMode::set)
-            Text("Внесезонные покупки (когда выгодно)")
+            Text(tr("Внесезонные покупки (когда выгодно)", "Позасезонні покупки (коли вигідно)"))
             ModeSelector(tipMode, p.tipMode::set)
-            Text("Проверить, как выглядит:", style = MaterialTheme.typography.bodySmall)
+            Text(tr("Проверить, как выглядит:", "Перевірити, як виглядає:"), style = MaterialTheme.typography.bodySmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Segmented(listOf(1 to "Уведомление", 2 to "Будильник"), testMode, { testMode = it }, Modifier.weight(1f))
-                Button(onClick = { Reminders.test(ctx, testMode); ui.toast("Сработает через 5 секунд") }) { Text("Тест") }
+                Segmented(listOf(1 to tr("Уведомление", "Сповіщення"), 2 to tr("Будильник", "Будильник")), testMode, { testMode = it }, Modifier.weight(1f))
+                Button(onClick = { Reminders.test(ctx, testMode); ui.toast(tr("Сработает через 5 секунд", "Спрацює через 5 секунд")) }) { Text(tr("Тест", "Тест")) }
             }
-            OutlinedButton(onClick = { Reminders.check(ctx); ui.toast("Проверка выполнена") }) { Text("Проверить сейчас") }
+            OutlinedButton(onClick = { Reminders.check(ctx); ui.toast(tr("Проверка выполнена", "Перевірку виконано")) }) { Text(tr("Проверить сейчас", "Перевірити зараз")) }
 
             Text(
-                "Проверка идёт по всем гаражам, где включены уведомления (Ещё → Гаражи), — не только по открытому транспорту.",
+                tr("Проверка идёт по всем гаражам, где включены уведомления (Ещё → Гаражи), — не только по открытому транспорту.", "Перевірка йде по всіх гаражах, де ввімкнено сповіщення (Ще → Гаражі), — не лише по відкритому транспорту."),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(24.dp))
@@ -477,5 +488,15 @@ private fun PrefNum(pref: com.relkin.carstatus.Prefs.IntPref, label: String, suf
     NumField(text, { v ->
         text = v
         parseKm(v)?.toInt()?.takeIf { it in range }?.let(pref::set)
-    }, label, suffix = suffix, decimal = false, hint = hint ?: "от ${range.first} до ${range.last}")
+    }, label, suffix = suffix, decimal = false, hint = hint ?: tr("от ${range.first} до ${range.last}", "від ${range.first} до ${range.last}"))
+}
+
+/** Activity за контекстом Compose (может быть обёрнут). */
+private fun Context.findActivity(): android.app.Activity? {
+    var c: Context? = this
+    while (c is android.content.ContextWrapper) {
+        if (c is android.app.Activity) return c
+        c = c.baseContext
+    }
+    return null
 }

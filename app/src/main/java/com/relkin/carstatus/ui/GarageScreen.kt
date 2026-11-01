@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import com.relkin.carstatus.data.GarageInfo
 import com.relkin.carstatus.data.Health
 import com.relkin.carstatus.data.VehicleRef
+import com.relkin.carstatus.util.tr
 
 /** Строка под заголовком вкладки: текущий транспорт и гараж; по нажатию — переключение. */
 @Composable
@@ -72,7 +73,7 @@ fun VehicleTitle() {
             style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
         )
-        Icon(Icons.Filled.ArrowDropDown, "Сменить транспорт", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(Icons.Filled.ArrowDropDown, tr("Сменить транспорт", "Змінити транспорт"), Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -87,7 +88,7 @@ private fun VehicleRow(v: VehicleRef, selected: Boolean, trailing: @Composable (
         headlineContent = { Text(s.car.title, fontWeight = if (selected) FontWeight.Bold else null, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         supportingContent = {
             Text(
-                if (!s.setupDone) "${s.kind.label} · не настроен"
+                if (!s.setupDone) tr("${s.kind.label} · не настроен", "${s.kind.label} · не налаштовано")
                 else listOfNotNull(s.kind.label, com.relkin.carstatus.util.Fmt.km(s.currentKm), hp?.let { "${(it * 100).toInt()} HP" }).joinToString(" · "),
             )
         },
@@ -105,7 +106,7 @@ fun SwitchDialog(close: () -> Unit) {
     var garageId by remember { mutableStateOf(gs.currentGarage?.id ?: gs.garages.first().id) }
     AlertDialog(
         onDismissRequest = close,
-        title = { Text("Гараж") },
+        title = { Text(tr("Гараж", "Гараж")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (gs.garages.size > 1) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -114,20 +115,20 @@ fun SwitchDialog(close: () -> Unit) {
                     }
                 }
                 val list = gs.inGarage(garageId)
-                if (list.isEmpty()) Empty("В этом гараже пока пусто")
+                if (list.isEmpty()) Empty(tr("В этом гараже пока пусто", "У цьому гаражі поки порожньо"))
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     list.forEach { v ->
                         VehicleRow(v, v.id == gs.current) { close(); ui.switchTo(v.id) }
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { close(); ui.addVehicle(garageId) }, modifier = Modifier.weight(1f)) { Text("+ Транспорт") }
-                    OutlinedButton(onClick = { close(); ui.push(Route.Garage) }, modifier = Modifier.weight(1f)) { Text("Гаражи…") }
+                    OutlinedButton(onClick = { close(); ui.addVehicle(garageId) }, modifier = Modifier.weight(1f)) { Text(tr("+ Транспорт", "+ Транспорт")) }
+                    OutlinedButton(onClick = { close(); ui.push(Route.Garage) }, modifier = Modifier.weight(1f)) { Text(tr("Гаражи…", "Гаражі…")) }
                 }
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = close) { Text("Закрыть") } },
+        dismissButton = { TextButton(onClick = close) { Text(tr("Закрыть", "Закрити")) } },
     )
 }
 
@@ -140,13 +141,13 @@ fun GarageScreen() {
     var newGarage by remember { mutableStateOf(false) }
     var delGarage by remember { mutableStateOf<GarageInfo?>(null) }
     var delVehicle by remember { mutableStateOf<VehicleRef?>(null) }
-    SubScreen("Гаражи", ui::pop, fab = {
-        FloatingActionButton(onClick = { newGarage = true }) { Icon(Icons.Filled.Add, "Новый гараж") }
+    SubScreen(tr("Гаражи", "Гаражі"), ui::pop, fab = {
+        FloatingActionButton(onClick = { newGarage = true }) { Icon(Icons.Filled.Add, tr("Новый гараж", "Новий гараж")) }
     }) { pad ->
         LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 88.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Text(
-                    "Переключайтесь между гаражами и транспортом в заголовке любой вкладки. Уведомления приходят сразу по всем гаражам, где они включены — не только по открытому.",
+                    tr("Переключайтесь между гаражами и транспортом в заголовке любой вкладки. Уведомления приходят сразу по всем гаражам, где они включены — не только по открытому.", "Перемикайтеся між гаражами й транспортом у заголовку будь-якої вкладки. Сповіщення надходять одразу з усіх гаражів, де їх увімкнено, — не лише з відкритого."),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -157,23 +158,23 @@ fun GarageScreen() {
                             Row(Modifier.padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Filled.Warehouse, null, tint = MaterialTheme.colorScheme.primary)
                                 Text(g.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f).padding(start = 10.dp))
-                                IconButton(onClick = { editGarage = g }) { Icon(Icons.Filled.Edit, "Переименовать") }
-                                if (gs.garages.size > 1) IconButton(onClick = { delGarage = g }) { Icon(Icons.Filled.Delete, "Удалить гараж") }
+                                IconButton(onClick = { editGarage = g }) { Icon(Icons.Filled.Edit, tr("Переименовать", "Перейменувати")) }
+                                if (gs.garages.size > 1) IconButton(onClick = { delGarage = g }) { Icon(Icons.Filled.Delete, tr("Удалить гараж", "Видалити гараж")) }
                             }
                             Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text("Уведомления из этого гаража", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                                Text(tr("Уведомления из этого гаража", "Сповіщення з цього гаража"), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                                 Switch(g.notify, { ui.garage.saveGarage(g.copy(notify = it)) })
                             }
                             HorizontalDivider(Modifier.padding(top = 4.dp))
                             val list = gs.inGarage(g.id)
-                            if (list.isEmpty()) Empty("Пусто")
+                            if (list.isEmpty()) Empty(tr("Пусто", "Порожньо"))
                             list.forEachIndexed { i, v ->
                                 VehicleRow(v, v.id == gs.current, trailing = {
                                     VehicleMenu(v, g, first = i == 0, last = i == list.lastIndex, others = gs.garages - g) { delVehicle = v }
                                 }) { ui.switchTo(v.id) }
                             }
                             TextButton(onClick = { ui.addVehicle(g.id) }, modifier = Modifier.padding(start = 8.dp)) {
-                                Icon(Icons.Filled.Add, null); Text("Добавить транспорт")
+                                Icon(Icons.Filled.Add, null); Text(tr("Добавить транспорт", "Додати транспорт"))
                             }
                         }
                     }
@@ -184,7 +185,7 @@ fun GarageScreen() {
     if (newGarage || editGarage != null) {
         var name by remember { mutableStateOf(editGarage?.name ?: "") }
         FormDialog(
-            title = if (editGarage == null) "Новый гараж" else "Гараж",
+            title = if (editGarage == null) tr("Новый гараж", "Новий гараж") else tr("Гараж", "Гараж"),
             onDismiss = { newGarage = false; editGarage = null },
             dirty = changed(name),
             confirmEnabled = name.isNotBlank(),
@@ -193,20 +194,20 @@ fun GarageScreen() {
                 newGarage = false; editGarage = null
             },
         ) {
-            OutlinedTextField(name, { name = it }, label = { Text("Название (дом, дача, работа…)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(name, { name = it }, label = { Text(tr("Название (дом, дача, работа…)", "Назва (дім, дача, робота…)")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
         }
     }
     delGarage?.let { g ->
         val n = gs.inGarage(g.id).size
         ConfirmDialog(
-            "Удалить гараж «${g.name}»?",
-            if (n == 0) "Гараж пуст." else "Вместе с ним будут удалены $n транспорт(а) со всеми записями и фото. Перенесите нужный в другой гараж заранее.",
+            tr("Удалить гараж «${g.name}»?", "Видалити гараж «${g.name}»?"),
+            if (n == 0) tr("Гараж пуст.", "Гараж порожній.") else tr("Вместе с ним будут удалены $n транспорт(а) со всеми записями и фото. Перенесите нужный в другой гараж заранее.", "Разом із ним буде видалено $n од. транспорту з усіма записами й фото. Перенесіть потрібний в інший гараж заздалегідь."),
             onDismiss = { delGarage = null },
         ) { ui.garage.deleteGarage(g.id) }
     }
     delVehicle?.let { v ->
         val title = ui.garage.repo(v.id).s.car.label
-        ConfirmDialog("Удалить «$title»?", "Все записи, пункты ТО и фото этого транспорта будут удалены без возможности восстановления.", onDismiss = { delVehicle = null }) {
+        ConfirmDialog(tr("Удалить «$title»?", "Видалити «$title»?"), tr("Все записи, пункты ТО и фото этого транспорта будут удалены без возможности восстановления.", "Усі записи, пункти ТО й фото цього транспорту буде видалено без можливості відновлення."), onDismiss = { delVehicle = null }) {
             ui.garage.deleteVehicle(v.id)
         }
     }
@@ -217,17 +218,17 @@ private fun VehicleMenu(v: VehicleRef, g: GarageInfo, first: Boolean, last: Bool
     val ui = LocalUi.current
     var open by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { open = true }) { Icon(Icons.Filled.Edit, "Действия") }
+        IconButton(onClick = { open = true }) { Icon(Icons.Filled.Edit, tr("Действия", "Дії")) }
         DropdownMenu(open, { open = false }) {
-            if (!first) DropdownMenuItem(text = { Text("Выше") }, leadingIcon = { Icon(Icons.Filled.KeyboardArrowUp, null) }, onClick = { ui.garage.reorder(v.id, -1); open = false })
-            if (!last) DropdownMenuItem(text = { Text("Ниже") }, leadingIcon = { Icon(Icons.Filled.KeyboardArrowDown, null) }, onClick = { ui.garage.reorder(v.id, 1); open = false })
+            if (!first) DropdownMenuItem(text = { Text(tr("Выше", "Вище")) }, leadingIcon = { Icon(Icons.Filled.KeyboardArrowUp, null) }, onClick = { ui.garage.reorder(v.id, -1); open = false })
+            if (!last) DropdownMenuItem(text = { Text(tr("Ниже", "Нижче")) }, leadingIcon = { Icon(Icons.Filled.KeyboardArrowDown, null) }, onClick = { ui.garage.reorder(v.id, 1); open = false })
             others.forEach { o ->
                 DropdownMenuItem(
-                    text = { Text("В гараж «${o.name}»") }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.DriveFileMove, null) },
+                    text = { Text(tr("В гараж «${o.name}»", "У гараж «${o.name}»")) }, leadingIcon = { Icon(Icons.AutoMirrored.Filled.DriveFileMove, null) },
                     onClick = { ui.garage.moveVehicle(v.id, o.id); open = false },
                 )
             }
-            DropdownMenuItem(text = { Text("Удалить") }, leadingIcon = { Icon(Icons.Filled.Delete, null) }, onClick = { open = false; onDelete() })
+            DropdownMenuItem(text = { Text(tr("Удалить", "Видалити")) }, leadingIcon = { Icon(Icons.Filled.Delete, null) }, onClick = { open = false; onDelete() })
         }
     }
 }

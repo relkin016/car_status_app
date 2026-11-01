@@ -17,7 +17,7 @@ object Fmt {
     private val dec1 = DecimalFormat("#,##0.#", sym)
     private val day = DateTimeFormatter.ofPattern("dd.MM.yyyy")
     private val dayShort = DateTimeFormatter.ofPattern("dd.MM")
-    private val month = DateTimeFormatter.ofPattern("LLLL yyyy", Locale.forLanguageTag("ru"))
+    private val month get() = DateTimeFormatter.ofPattern("LLLL yyyy", Lang.locale)
     private val time = DateTimeFormatter.ofPattern("HH:mm")
 
     /** Валюта отображения (настройка). */
@@ -41,8 +41,9 @@ object Fmt {
     /** Значение для поля ввода: без разделителей групп, точка как десятичный знак. */
     fun edit(v: Double): String = if (abs(v - v.roundToLong()) < 1e-9) v.roundToLong().toString() else "%.2f".format(Locale.ROOT, v).trimEnd('0').trimEnd('.')
 
-    fun days(n: Long): String = "$n " + plural(n, "день", "дня", "дней")
+    fun days(n: Long): String = "$n " + plural(n, tr("день", "день"), tr("дня", "дні"), tr("дней", "днів"))
 
+    /** Формы множественного числа — правило одно для русского и украинского. */
     fun plural(n: Long, one: String, few: String, many: String): String {
         val m = abs(n) % 100
         val d = m % 10

@@ -34,9 +34,11 @@ class Prefs(ctx: Context) {
     /** 0 — как в системе, 1 — светлая, 2 — тёмная. */
     val theme = IntPref("theme", 0)
     val dynamicColor = IntPref("dynamic_color", 0)
+    /** Язык: Lang.AUTO — как в системе, Lang.RU, Lang.UK. */
+    val lang = IntPref("lang", 0)
     /** Переключение вкладок свайпом. */
     val swipeNav = IntPref("swipe_nav", 1)
-    val currency = StrPref("currency", "грн")
+    val currency = StrPref("currency", "грн")  // одинаково по-русски и по-украински
 
     /** Режимы уведомлений: 0 — выкл, 1 — уведомление, 2 — будильник. */
     val hpMode = IntPref("hp_mode", 1, true)

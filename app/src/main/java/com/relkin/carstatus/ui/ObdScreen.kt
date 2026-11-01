@@ -52,6 +52,7 @@ import com.relkin.carstatus.obd.LiveData
 import com.relkin.carstatus.obd.ObdState
 import com.relkin.carstatus.obd.OdoRead
 import com.relkin.carstatus.util.Fmt
+import com.relkin.carstatus.util.tr
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -77,19 +78,19 @@ fun ObdScreen() {
     fun run(label: String, block: suspend () -> Unit) {
         scope.launch {
             busy = label
-            try { block() } catch (t: Throwable) { ui.toast("Ошибка: ${t.message ?: t.javaClass.simpleName}") }
+            try { block() } catch (t: Throwable) { ui.toast(tr("Ошибка: ${t.message ?: t.javaClass.simpleName}", "Помилка: ${t.message ?: t.javaClass.simpleName}")) }
             busy = null
         }
     }
 
     suspend fun readOdo(silent: Boolean) {
         when (val r = obd.readOdometer(ui.repo.s.currentKm)) {
-            is OdoRead.Odometer -> { ui.repo.addOdo(r.km, source = OdoSource.OBD); ui.toast("Пробег с одометра: ${Fmt.km(r.km)}") }
+            is OdoRead.Odometer -> { ui.repo.addOdo(r.km, source = OdoSource.OBD); ui.toast(tr("Пробег с одометра: ${Fmt.km(r.km)}", "Пробіг з одометра: ${Fmt.km(r.km)}")) }
             is OdoRead.Estimated -> if (r.km > ui.repo.s.currentKm) {
-                ui.repo.addOdo(r.km, source = OdoSource.OBD); ui.toast("Пробег по OBD: ${Fmt.km(r.km)}")
-            } else if (!silent) ui.toast("Пробег не изменился")
-            OdoRead.BaseSet -> if (!silent) ui.toast("Машина не отдаёт одометр. Точка отсчёта сохранена — дальше пробег будет считаться по OBD")
-            OdoRead.Unsupported -> if (!silent) ui.toast("ЭБУ не сообщает пробег — вводите вручную")
+                ui.repo.addOdo(r.km, source = OdoSource.OBD); ui.toast(tr("Пробег по OBD: ${Fmt.km(r.km)}", "Пробіг за OBD: ${Fmt.km(r.km)}"))
+            } else if (!silent) ui.toast(tr("Пробег не изменился", "Пробіг не змінився"))
+            OdoRead.BaseSet -> if (!silent) ui.toast(tr("Машина не отдаёт одометр. Точка отсчёта сохранена — дальше пробег будет считаться по OBD", "Авто не віддає одометр. Точку відліку збережено — далі пробіг рахуватиметься за OBD"))
+            OdoRead.Unsupported -> if (!silent) ui.toast(tr("ЭБУ не сообщает пробег — вводите вручную", "ЕБК не повідомляє пробіг — вводьте вручну"))
         }
     }
 
@@ -104,47 +105,47 @@ fun ObdScreen() {
         }
     }
 
-    TabScaffold("OBD2-диагностика") { pad ->
+    TabScaffold(tr("OBD2-диагностика", "OBD2-діагностика")) { pad ->
         LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Адаптер ELM327 (Bluetooth)", style = MaterialTheme.typography.titleMedium)
+                        Text(tr("Адаптер ELM327 (Bluetooth)", "Адаптер ELM327 (Bluetooth)"), style = MaterialTheme.typography.titleMedium)
                         when {
                             !granted -> {
-                                Text("Нужно разрешение на подключение к Bluetooth-устройствам.")
-                                Button(onClick = { if (Build.VERSION.SDK_INT >= 31) perm.launch(Manifest.permission.BLUETOOTH_CONNECT) else granted = true }) { Text("Разрешить") }
+                                Text(tr("Нужно разрешение на подключение к Bluetooth-устройствам.", "Потрібен дозвіл на підключення до Bluetooth-пристроїв."))
+                                Button(onClick = { if (Build.VERSION.SDK_INT >= 31) perm.launch(Manifest.permission.BLUETOOTH_CONNECT) else granted = true }) { Text(tr("Разрешить", "Дозволити")) }
                             }
                             !obd.bluetoothOn -> {
-                                Text("Bluetooth выключен.")
-                                Button(onClick = { ctx.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) }) { Text("Настройки Bluetooth") }
+                                Text(tr("Bluetooth выключен.", "Bluetooth вимкнено."))
+                                Button(onClick = { ctx.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) }) { Text(tr("Настройки Bluetooth", "Налаштування Bluetooth")) }
                             }
                             else -> {
                                 val dev = obd.bonded().firstOrNull { it.address == address }
                                 Text(
                                     when (val st = state) {
-                                        ObdState.Off -> "Не подключено" + (dev?.let { " · ${it.name}" } ?: "")
-                                        ObdState.Connecting -> "Подключение…"
-                                        is ObdState.Connected -> "Подключено: ${st.name}\nПротокол: ${st.protocol}"
-                                        is ObdState.Failed -> "Ошибка: ${st.message}"
+                                        ObdState.Off -> tr("Не подключено", "Не підключено") + (dev?.let { " · ${it.name}" } ?: "")
+                                        ObdState.Connecting -> tr("Подключение…", "Підключення…")
+                                        is ObdState.Connected -> tr("Подключено: ${st.name}\nПротокол: ${st.protocol}", "Підключено: ${st.name}\nПротокол: ${st.protocol}")
+                                        is ObdState.Failed -> tr("Ошибка: ${st.message}", "Помилка: ${st.message}")
                                     },
                                 )
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    if (state is ObdState.Connected) OutlinedButton(onClick = { obd.disconnect(); liveOn = false }) { Text("Отключить") }
+                                    if (state is ObdState.Connected) OutlinedButton(onClick = { obd.disconnect(); liveOn = false }) { Text(tr("Отключить", "Відключити")) }
                                     else Button(
                                         enabled = state != ObdState.Connecting,
                                         onClick = { if (address.isEmpty()) pickDevice = true else scope.launch { obd.connect(address) } },
-                                    ) { Text("Подключить") }
-                                    OutlinedButton(onClick = { pickDevice = true }) { Text("Адаптер…") }
+                                    ) { Text(tr("Подключить", "Підключити")) }
+                                    OutlinedButton(onClick = { pickDevice = true }) { Text(tr("Адаптер…", "Адаптер…")) }
                                 }
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("Читать пробег при подключении", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                                    Text(tr("Читать пробег при подключении", "Зчитувати пробіг під час підключення"), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                                     Switch(autoOdo == 1, { ui.prefs.obdAutoOdo.set(if (it) 1 else 0) })
                                 }
                             }
                         }
                         Text(
-                            "Сначала сопрягите адаптер в настройках Bluetooth телефона (PIN обычно 1234 или 0000), зажигание — включено.",
+                            tr("Сначала сопрягите адаптер в настройках Bluetooth телефона (PIN обычно 1234 или 0000), зажигание — включено.", "Спочатку створіть пару з адаптером у налаштуваннях Bluetooth телефона (PIN зазвичай 1234 або 0000), запалювання — увімкнено."),
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -153,9 +154,9 @@ fun ObdScreen() {
             if (state is ObdState.Connected) {
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        Button(onClick = { run("Чтение ошибок…") { dtc = obd.readDtc() } }, modifier = Modifier.weight(1f)) { Text("Ошибки") }
-                        OutlinedButton(onClick = { run("Чтение пробега…") { readOdo(false) } }, modifier = Modifier.weight(1f)) { Text("Пробег") }
-                        OutlinedButton(onClick = { liveOn = !liveOn }, modifier = Modifier.weight(1f)) { Text(if (liveOn) "Стоп" else "Датчики") }
+                        Button(onClick = { run(tr("Чтение ошибок…", "Зчитування помилок…")) { dtc = obd.readDtc() } }, modifier = Modifier.weight(1f)) { Text(tr("Ошибки", "Помилки")) }
+                        OutlinedButton(onClick = { run(tr("Чтение пробега…", "Зчитування пробігу…")) { readOdo(false) } }, modifier = Modifier.weight(1f)) { Text(tr("Пробег", "Пробіг")) }
+                        OutlinedButton(onClick = { liveOn = !liveOn }, modifier = Modifier.weight(1f)) { Text(if (liveOn) tr("Стоп", "Стоп") else tr("Датчики", "Датчики")) }
                     }
                 }
             }
@@ -171,24 +172,24 @@ fun ObdScreen() {
                 item {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            if (d.all.isEmpty()) "✅ Ошибок нет" else "Найдено кодов: ${d.all.size}",
+                            if (d.all.isEmpty()) tr("✅ Ошибок нет", "✅ Помилок немає") else tr("Найдено кодов: ${d.all.size}", "Знайдено кодів: ${d.all.size}"),
                             style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f),
                         )
                         if (d.all.isNotEmpty()) TextButton(onClick = {
                             val text = d.all.joinToString("\n") { "${it}: ${Dtc.info(it).title}" }
                             ui.repo.saveIncident(Incident(time = System.currentTimeMillis(), km = ui.repo.s.currentKm, title = "OBD: " + d.all.joinToString(), note = text, severity = d.all.maxOf { Dtc.info(it).severity }))
-                            ui.toast("Записано в дневник")
-                        }) { Text("В дневник") }
+                            ui.toast(tr("Записано в дневник", "Записано в щоденник"))
+                        }) { Text(tr("В дневник", "У щоденник")) }
                     }
                 }
-                listOf("Сохранённые" to d.stored, "Ожидающие (ещё не подтверждены)" to d.pending, "Постоянные" to d.permanent).forEach { (title, list) ->
+                listOf(tr("Сохранённые", "Збережені") to d.stored, tr("Ожидающие (ещё не подтверждены)", "Очікувані (ще не підтверджені)") to d.pending, tr("Постоянные", "Постійні") to d.permanent).forEach { (title, list) ->
                     if (list.isNotEmpty()) {
                         item { Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary) }
                         list.forEach { code -> item(key = title + code) { DtcCard(code) } }
                     }
                 }
                 if (d.all.isNotEmpty()) item {
-                    OutlinedButton(onClick = { confirmClear = true }, modifier = Modifier.fillMaxWidth()) { Text("Сбросить ошибки и Check Engine") }
+                    OutlinedButton(onClick = { confirmClear = true }, modifier = Modifier.fillMaxWidth()) { Text(tr("Сбросить ошибки и Check Engine", "Скинути помилки й Check Engine")) }
                 }
             }
         }
@@ -198,10 +199,10 @@ fun ObdScreen() {
         val list = obd.bonded()
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { pickDevice = false },
-            title = { Text("Сопряжённые устройства") },
+            title = { Text(tr("Сопряжённые устройства", "Спарені пристрої")) },
             text = {
                 Column {
-                    if (list.isEmpty()) Text("Нет сопряжённых устройств. Сопрягите адаптер в настройках Bluetooth.")
+                    if (list.isEmpty()) Text(tr("Нет сопряжённых устройств. Сопрягите адаптер в настройках Bluetooth.", "Немає спарених пристроїв. Створіть пару з адаптером у налаштуваннях Bluetooth."))
                     list.forEach { d ->
                         TextButton(onClick = { pickDevice = false; scope.launch { obd.connect(d.address) } }, modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.fillMaxWidth()) { Text(d.name); Text(d.address, style = MaterialTheme.typography.bodySmall) }
@@ -209,18 +210,18 @@ fun ObdScreen() {
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { pickDevice = false; ctx.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) }) { Text("Настройки Bluetooth") } },
-            dismissButton = { TextButton(onClick = { pickDevice = false }) { Text("Закрыть") } },
+            confirmButton = { TextButton(onClick = { pickDevice = false; ctx.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) }) { Text(tr("Настройки Bluetooth", "Налаштування Bluetooth")) } },
+            dismissButton = { TextButton(onClick = { pickDevice = false }) { Text(tr("Закрыть", "Закрити")) } },
         )
     }
     if (confirmClear) ConfirmDialog(
-        "Сбросить ошибки?",
-        "Коды и лампа Check Engine погаснут, но причина не исчезнет — при неисправности ошибка вернётся. Сбросятся и тесты готовности (важно перед техосмотром). Делайте это после ремонта.",
-        confirm = "Сбросить", onDismiss = { confirmClear = false },
+        tr("Сбросить ошибки?", "Скинути помилки?"),
+        tr("Коды и лампа Check Engine погаснут, но причина не исчезнет — при неисправности ошибка вернётся. Сбросятся и тесты готовности (важно перед техосмотром). Делайте это после ремонта.", "Коди й лампа Check Engine згаснуть, але причина не зникне — за несправності помилка повернеться. Скинуться й тести готовності (важливо перед техоглядом). Робіть це після ремонту."),
+        confirm = tr("Сбросить", "Скинути"), onDismiss = { confirmClear = false },
     ) {
-        run("Сброс…") {
+        run(tr("Сброс…", "Скидання…")) {
             val ok = obd.clearDtc(ui.repo.s.currentKm)
-            ui.toast(if (ok) "Ошибки сброшены" else "ЭБУ не принял команду (заглушите двигатель, зажигание оставьте)")
+            ui.toast(if (ok) tr("Ошибки сброшены", "Помилки скинуто") else tr("ЭБУ не принял команду (заглушите двигатель, зажигание оставьте)", "ЕБК не прийняв команду (заглушіть двигун, запалювання залиште)"))
             if (ok) dtc = obd.readDtc()
         }
     }
@@ -243,7 +244,7 @@ private fun DtcCard(code: String) {
                 Text(code, style = MaterialTheme.typography.titleMedium, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
                 Text(info.title, style = MaterialTheme.typography.bodyMedium)
                 Text(Dtc.severityLabel(info.severity), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                Text("Что проверить: ${info.hint}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(tr("Что проверить: ${info.hint}", "Що перевірити: ${info.hint}"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -253,17 +254,17 @@ private fun DtcCard(code: String) {
 private fun LiveCard(l: LiveData) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row { LabeledValue("Обороты", l.rpm?.let { "$it об/мин" } ?: "—", Modifier.weight(1f)); LabeledValue("Скорость", l.speed?.let { "$it км/ч" } ?: "—", Modifier.weight(1f)) }
-            Row { LabeledValue("Охлаждающая ж.", l.coolant?.let { "$it °C" } ?: "—", Modifier.weight(1f)); LabeledValue("Воздух на впуске", l.intake?.let { "$it °C" } ?: "—", Modifier.weight(1f)) }
-            Row { LabeledValue("Нагрузка", l.load?.let { "$it%" } ?: "—", Modifier.weight(1f)); LabeledValue("Дроссель", l.throttle?.let { "$it%" } ?: "—", Modifier.weight(1f)) }
-            Row { LabeledValue("Напряжение", l.voltage?.let { Fmt.dec(it) + " В" } ?: "—", Modifier.weight(1f)); LabeledValue("Топливо", l.fuelLevel?.let { "$it%" } ?: "—", Modifier.weight(1f)) }
+            Row { LabeledValue(tr("Обороты", "Оберти"), l.rpm?.let { tr("$it об/мин", "$it об/хв") } ?: "—", Modifier.weight(1f)); LabeledValue(tr("Скорость", "Швидкість"), l.speed?.let { tr("$it км/ч", "$it км/год") } ?: "—", Modifier.weight(1f)) }
+            Row { LabeledValue(tr("Охлаждающая ж.", "Охолоджувальна р."), l.coolant?.let { "$it °C" } ?: "—", Modifier.weight(1f)); LabeledValue(tr("Воздух на впуске", "Повітря на впуску"), l.intake?.let { "$it °C" } ?: "—", Modifier.weight(1f)) }
+            Row { LabeledValue(tr("Нагрузка", "Навантаження"), l.load?.let { "$it%" } ?: "—", Modifier.weight(1f)); LabeledValue(tr("Дроссель", "Дросель"), l.throttle?.let { "$it%" } ?: "—", Modifier.weight(1f)) }
+            Row { LabeledValue(tr("Напряжение", "Напруга"), l.voltage?.let { Fmt.dec(it) + tr(" В", " В") } ?: "—", Modifier.weight(1f)); LabeledValue(tr("Топливо", "Пальне"), l.fuelLevel?.let { "$it%" } ?: "—", Modifier.weight(1f)) }
             val hints = buildList {
                 l.voltage?.let { v ->
-                    if ((l.rpm ?: 0) > 400 && v < 13.2) add("Напряжение при работающем двигателе ниже 13,2 В — проверьте генератор")
-                    if ((l.rpm ?: 0) == 0 && v < 12.3) add("АКБ разряжена (< 12,3 В без нагрузки) — зарядите или проверьте")
-                    if (v > 14.8) add("Перезаряд (> 14,8 В) — регулятор напряжения")
+                    if ((l.rpm ?: 0) > 400 && v < 13.2) add(tr("Напряжение при работающем двигателе ниже 13,2 В — проверьте генератор", "Напруга при працюючому двигуні нижча за 13,2 В — перевірте генератор"))
+                    if ((l.rpm ?: 0) == 0 && v < 12.3) add(tr("АКБ разряжена (< 12,3 В без нагрузки) — зарядите или проверьте", "АКБ розряджена (< 12,3 В без навантаження) — зарядіть або перевірте"))
+                    if (v > 14.8) add(tr("Перезаряд (> 14,8 В) — регулятор напряжения", "Перезаряд (> 14,8 В) — регулятор напруги"))
                 }
-                l.coolant?.let { if (it > 105) add("Температура ОЖ высокая — следите за перегревом") }
+                l.coolant?.let { if (it > 105) add(tr("Температура ОЖ высокая — следите за перегревом", "Температура ОР висока — стежте за перегрівом")) }
             }
             hints.forEach { Text("⚠️ $it", style = MaterialTheme.typography.bodySmall) }
         }

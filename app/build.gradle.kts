@@ -8,7 +8,7 @@ plugins {
 }
 
 // Версия приложения: versionCode выводится из versionName (major*10000 + minor*100 + patch).
-val appVersion = "0.4.0"
+val appVersion = "0.5.0"
 
 android {
     namespace = "com.relkin.carstatus"
@@ -20,7 +20,7 @@ android {
         targetSdk = 35
         versionName = appVersion
         versionCode = appVersion.split(".").map(String::toInt).let { (a, b, c) -> a * 10000 + b * 100 + c }
-        resourceConfigurations += listOf("ru")
+        resourceConfigurations += listOf("ru", "uk")
         // Нативных библиотек нет, но на будущее: x86/x86_64 в сборку не попадают.
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }

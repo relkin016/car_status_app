@@ -1,5 +1,7 @@
 package com.relkin.carstatus.data
 
+import com.relkin.carstatus.util.tr
+
 /** Даты — epochDay (LocalDate.toEpochDay), моменты — миллисекунды. */
 
 data class Car(
@@ -31,11 +33,11 @@ object OdoSource {
     const val REMINDER = 3
     const val RECORD = 4
     fun label(s: Int) = when (s) {
-        FUEL -> "заправка"
+        FUEL -> tr("заправка", "заправка")
         OBD -> "OBD2"
-        REMINDER -> "напоминание"
-        RECORD -> "запись"
-        else -> "вручную"
+        REMINDER -> tr("напоминание", "нагадування")
+        RECORD -> tr("запись", "запис")
+        else -> tr("вручную", "вручну")
     }
 }
 
@@ -67,11 +69,11 @@ object LogType {
     const val WORK = 4
     val all = listOf(FUEL, SERVICE, WORK, PART, OTHER)
     fun label(t: Int) = when (t) {
-        FUEL -> "Топливо"
-        SERVICE -> "ТО"
-        WORK -> "Работы"
-        PART -> "Запчасти"
-        else -> "Прочее"
+        FUEL -> tr("Топливо", "Пальне")
+        SERVICE -> tr("ТО", "ТО")
+        WORK -> tr("Работы", "Роботи")
+        PART -> tr("Запчасти", "Запчастини")
+        else -> tr("Прочее", "Інше")
     }
 }
 

@@ -3,6 +3,7 @@ package com.relkin.carstatus.data
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.net.Uri
+import com.relkin.carstatus.util.tr
 import java.io.File
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
@@ -36,7 +37,7 @@ object Backup {
                     n++
                 }
             }
-        } ?: error("Не удалось открыть файл")
+        } ?: error(tr("Не удалось открыть файл", "Не вдалося відкрити файл"))
         return n
     }
 
@@ -63,19 +64,19 @@ object Backup {
                     out.outputStream().use { zip.copyTo(it) }
                 }
             }
-        } ?: error("Не удалось открыть файл")
-        if (dbs.isEmpty()) error("В архиве нет базы ${Schema.NAME} — это не резервная копия «Авто·Статус»")
+        } ?: error(tr("Не удалось открыть файл", "Не вдалося відкрити файл"))
+        if (dbs.isEmpty()) error(tr("В архиве нет базы ${Schema.NAME} — это не резервная копия «Авто·Статус»", "В архіві немає бази ${Schema.NAME} — це не резервна копія «Авто·Статус»"))
         for (f in dbs.values) {
             val tables = SQLiteDatabase.openDatabase(f.path, null, SQLiteDatabase.OPEN_READONLY).use { d ->
                 d.list("SELECT name FROM sqlite_master WHERE type='table'") { it.str("name") }.toSet()
             }
-            require(tables.containsAll(Schema.REQUIRED)) { "Файл базы ${f.name} повреждён или от другого приложения" }
+            require(tables.containsAll(Schema.REQUIRED)) { tr("Файл базы ${f.name} повреждён или от другого приложения", "Файл бази ${f.name} пошкоджений або з іншого застосунку") }
         }
         // Реестр из копии проверяем заранее; без него — один гараж со всеми базами из архива
         val state = registry?.let { runCatching { Garage.fromJson(org.json.JSONObject(it.readText())) }.getOrNull() }
             ?.let { st -> st.copy(vehicles = st.vehicles.filter { it.id in dbs }) }
             ?.takeIf { it.vehicles.isNotEmpty() }
-            ?: GarageState(listOf(GarageInfo(1, "Мой гараж")), dbs.keys.sorted().mapIndexed { i, id -> VehicleRef(id, 1, i) }, dbs.keys.min())
+            ?: GarageState(listOf(GarageInfo(1, tr("Мой гараж", "Мій гараж"))), dbs.keys.sorted().mapIndexed { i, id -> VehicleRef(id, 1, i) }, dbs.keys.min())
 
         val photoDir = garage.current.photoDir
         synchronized(garage) {

@@ -157,7 +157,10 @@ class Repo(private val ctx: Context, val dbName: String) {
     fun restoreDefaultItems() = write {
         val names = s.items.map { it.name }.toSet()
         var pos = (s.items.maxOfOrNull { it.position } ?: -1) + 1
-        for (it in s.kind.items) if (it.name !in names) insertItem(it.copy(position = pos++))
+        // пункт мог быть создан на другом языке — сверяем оба названия
+        val ru = Consumables.of(s.kind, uk = false)
+        val uk = Consumables.of(s.kind, uk = true)
+        for (n in ru.indices) if (ru[n].name !in names && uk[n].name !in names) insertItem(s.kind.items[n].copy(position = pos++))
     }
 
     // ---------- Журнал ----------

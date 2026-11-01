@@ -1,11 +1,14 @@
 package com.relkin.carstatus.data
 
+import com.relkin.carstatus.util.tr
 import java.time.LocalDate
 import java.time.YearMonth
 
 /** Категории «реальной цены километра». */
-enum class CostCat(val label: String) {
-    FUEL("Топливо"), SERVICE("ТО"), WORK("Работы"), PARTS("Запчасти"), OTHER("Прочее");
+enum class CostCat(private val ru: String, private val uk: String) {
+    FUEL("Топливо", "Пальне"), SERVICE("ТО", "ТО"), WORK("Работы", "Роботи"), PARTS("Запчасти", "Запчастини"), OTHER("Прочее", "Інше");
+
+    val label: String get() = tr(ru, uk)
 
     /** «Топливо» у электротранспорта — «Электричество». */
     fun label(kind: VehicleKind) = if (this == FUEL) kind.energyLabel else label

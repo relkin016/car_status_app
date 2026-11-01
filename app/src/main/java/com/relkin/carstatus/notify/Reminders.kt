@@ -22,6 +22,7 @@ import com.relkin.carstatus.data.Quests
 import com.relkin.carstatus.data.Tips
 import com.relkin.carstatus.data.Trigger
 import com.relkin.carstatus.util.Fmt
+import com.relkin.carstatus.util.tr
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
@@ -30,7 +31,7 @@ object Mode {
     const val OFF = 0
     const val NOTIFY = 1
     const val ALARM = 2
-    val labels = listOf("Выкл", "Уведомление", "Будильник")
+    val labels: List<String> get() = listOf(tr("Выкл", "Вимк"), tr("Уведомление", "Сповіщення"), tr("Будильник", "Будильник"))
 }
 
 object Reminders {
@@ -62,13 +63,13 @@ object Reminders {
     fun createChannels(ctx: Context) {
         val nm = ctx.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(
-            NotificationChannel(CH_NOTIFY, "Напоминания", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "Обслуживание, пробег, сезонные квесты и советы"
+            NotificationChannel(CH_NOTIFY, tr("Напоминания", "Нагадування"), NotificationManager.IMPORTANCE_HIGH).apply {
+                description = tr("Обслуживание, пробег, сезонные квесты и советы", "Обслуговування, пробіг, сезонні квести й поради")
             }
         )
         nm.createNotificationChannel(
-            NotificationChannel(CH_ALARM, "Будильник", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "Напоминания в режиме будильника: звук повторяется, пока не выключите"
+            NotificationChannel(CH_ALARM, tr("Будильник", "Будильник"), NotificationManager.IMPORTANCE_HIGH).apply {
+                description = tr("Напоминания в режиме будильника: звук повторяется, пока не выключите", "Нагадування в режимі будильника: звук повторюється, доки не вимкнете")
                 setSound(
                     RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM),
                     AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
@@ -155,13 +156,13 @@ object Reminders {
                     shown += key
                     if (key in notified) continue
                     val left = buildList {
-                        ih.kmLeft?.let { add(if (it > 0) "осталось ${Fmt.km(it)}" else "перепробег ${Fmt.km(-it)}") }
-                        ih.daysLeft?.let { add(if (it > 0) "${Fmt.days(it)}" else "просрочено на ${Fmt.days(-it)}") }
+                        ih.kmLeft?.let { add(if (it > 0) tr("осталось ", "залишилось ") + Fmt.km(it) else tr("перепробег ", "перепробіг ") + Fmt.km(-it)) }
+                        ih.daysLeft?.let { add(if (it > 0) Fmt.days(it) else tr("просрочено на ", "прострочено на ") + Fmt.days(-it)) }
                     }.joinToString(" · ")
-                    val due = ih.due?.let { d -> " · срок ~${Fmt.day(d)} (${if (ih.trigger == Trigger.KM) "по пробегу" else "по времени"})" } ?: ""
+                    val due = ih.due?.let { d -> tr(" · срок ~", " · строк ~") + Fmt.day(d) + " (" + (if (ih.trigger == Trigger.KM) tr("по пробегу", "за пробігом") else tr("по времени", "за часом")) + ")" } ?: ""
                     show(
                         ctx, nid(vid, N_HP + it.id.toInt()),
-                        who + (if (ih.overdue) "Просрочено: " else "HP $pct%: ") + it.name,
+                        who + (if (ih.overdue) tr("Просрочено: ", "Прострочено: ") else "HP $pct%: ") + it.name,
                         left + due, p.hpMode.value, open,
                     )
                 }
@@ -180,10 +181,10 @@ object Reminders {
                         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
                     )
                     show(
-                        ctx, id, who + "Какой сейчас пробег?",
-                        "Последнее показание: ${Fmt.km(s.currentKm)}" + (s.lastOdoDate?.let { " от ${Fmt.day(it)}" } ?: "") +
-                            ". Обновите — прогноз ТО станет точнее.",
-                        p.odoMode.value, odo, listOf("Ввести пробег" to odo),
+                        ctx, id, who + tr("Какой сейчас пробег?", "Який зараз пробіг?"),
+                        tr("Последнее показание: ", "Останній показник: ") + Fmt.km(s.currentKm) + (s.lastOdoDate?.let { tr(" от ", " від ") + Fmt.day(it) } ?: "") +
+                            tr(". Обновите — прогноз ТО станет точнее.", ". Оновіть — прогноз ТО стане точнішим."),
+                        p.odoMode.value, odo, listOf(tr("Ввести пробег", "Ввести пробіг") to odo),
                     )
                 }
             }
@@ -200,8 +201,8 @@ object Reminders {
                     notified += key
                     show(
                         ctx, nid(vid, N_QUEST + i), "${q.emoji} ${who}Квест: ${q.title}",
-                        (if (late) "До конца сезона ${Fmt.days(ChronoUnit.DAYS.between(today, end))}. " else "Сезон начался! ") +
-                            "Выполнено $done из ${q.steps.size}. Следующий шаг: " +
+                        (if (late) tr("До конца сезона ", "До кінця сезону ") + Fmt.days(ChronoUnit.DAYS.between(today, end)) + ". " else tr("Сезон начался! ", "Сезон почався! ")) +
+                            tr("Выполнено $done из ${q.steps.size}. Следующий шаг: ", "Виконано $done з ${q.steps.size}. Наступний крок: ") +
                             (q.steps.firstOrNull { st -> q.stepKey(season, st) !in s.questDone }?.title ?: "—"),
                         p.questMode.value, open,
                     )
@@ -238,7 +239,7 @@ object Reminders {
     }
 
     fun showTest(ctx: Context, mode: Int) =
-        show(ctx, N_TEST, "Проверка уведомлений", "Так будет выглядеть напоминание о ТО.", mode)
+        show(ctx, N_TEST, tr("Проверка уведомлений", "Перевірка сповіщень"), tr("Так будет выглядеть напоминание о ТО.", "Так виглядатиме нагадування про ТО."), mode)
 
     fun show(
         ctx: Context, notifId: Int, title: String, text: String, mode: Int,
@@ -270,7 +271,7 @@ object Reminders {
                 .setFullScreenIntent(full, true)
                 .setOngoing(true)
                 .setAutoCancel(false)
-                .addAction(0, "Выключить", dismiss)
+                .addAction(0, tr("Выключить", "Вимкнути"), dismiss)
         } else {
             b.setCategory(NotificationCompat.CATEGORY_REMINDER)
         }

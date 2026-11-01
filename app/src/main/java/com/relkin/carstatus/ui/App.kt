@@ -47,6 +47,7 @@ import com.relkin.carstatus.data.LogEntry
 import com.relkin.carstatus.data.Photo
 import com.relkin.carstatus.data.VehicleKind
 import com.relkin.carstatus.util.Fmt
+import com.relkin.carstatus.util.tr
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -107,12 +108,14 @@ class Ui(val app: CarApp, val scope: CoroutineScope, val snackbar: SnackbarHostS
 
 val LocalUi = staticCompositionLocalOf<Ui> { error("no ui") }
 
-private enum class Tab(val title: String, val icon: ImageVector) {
-    STATUS("Статус", Icons.Filled.Favorite),
-    JOURNAL("Журнал", Icons.AutoMirrored.Filled.MenuBook),
-    COSTS("Расходы", Icons.Filled.Payments),
-    OBD("OBD2", Icons.Filled.Bluetooth),
-    MORE("Ещё", Icons.Filled.Menu),
+private enum class Tab(private val ru: String, private val uk: String, val icon: ImageVector) {
+    STATUS("Статус", "Статус", Icons.Filled.Favorite),
+    JOURNAL("Журнал", "Журнал", Icons.AutoMirrored.Filled.MenuBook),
+    COSTS("Расходы", "Витрати", Icons.Filled.Payments),
+    OBD("OBD2", "OBD2", Icons.Filled.Bluetooth),
+    MORE("Ещё", "Ще", Icons.Filled.Menu);
+
+    val title: String get() = tr(ru, uk)
 }
 
 /** Вкладка OBD2 — только у транспорта с диагностическим разъёмом. */
