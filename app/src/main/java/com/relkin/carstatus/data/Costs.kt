@@ -37,8 +37,9 @@ data class CostReport(
 object Costs {
     fun split(e: LogEntry): Map<CostCat, Double> = when (e.type) {
         LogType.FUEL -> mapOf(CostCat.FUEL to e.total)
-        LogType.SERVICE -> mapOf(CostCat.SERVICE to e.amount, CostCat.PARTS to e.parts)
-        LogType.WORK -> mapOf(CostCat.WORK to e.amount, CostCat.PARTS to e.parts)
+        // Запчасти и материалы, купленные под ТО или работу, — часть их стоимости; «Запчасти» — отдельные покупки
+        LogType.SERVICE -> mapOf(CostCat.SERVICE to e.total)
+        LogType.WORK -> mapOf(CostCat.WORK to e.total)
         LogType.PART -> mapOf(CostCat.PARTS to e.total)
         else -> mapOf(CostCat.OTHER to e.total)
     }
