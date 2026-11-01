@@ -97,6 +97,8 @@ data class LogEntry(
     val brand: String = "",
     /** Артикулы (номера деталей) — по строке на позицию, парно с [brand]. */
     val partNo: String = "",
+    /** Пробег введён вручную; иначе он подставлен по показаниям на дату записи. */
+    val kmManual: Boolean = true,
 ) {
     val total: Double get() = amount + parts
     /** Позиции «бренд + артикул», пустые отброшены. */
@@ -198,12 +200,14 @@ data class Snapshot(
      * Пробег на дату по показаниям: точное показание этого дня, иначе линейно между соседними.
      * До первого показания — первое, после последнего — текущий пробег.
      */
-    fun kmAt(date: Long): Long {
-        val r = readings
-        if (r.isEmpty()) return currentKm
+    fun kmAt(date: Long, exceptLog: Long = 0): Long {
+        // При правке записи её собственный пробег в расчёт не берём
+        val own = log.firstOrNull { it.id == exceptLog && it.km != null }
+        val r = if (own == null) readings else readings.toMutableList().apply { remove(own.date to own.km!!) }
+        if (r.isEmpty()) return own?.km ?: currentKm
         r.filter { it.first == date }.maxOfOrNull { it.second }?.let { return it }
         val before = r.lastOrNull { it.first < date } ?: return r.first().second
-        val after = r.firstOrNull { it.first > date } ?: return currentKm
+        val after = r.firstOrNull { it.first > date } ?: return if (own == null) currentKm else r.maxOf { it.second }
         val k = (date - before.first).toDouble() / (after.first - before.first)
         return before.second + Math.round((after.second - before.second) * k)
     }

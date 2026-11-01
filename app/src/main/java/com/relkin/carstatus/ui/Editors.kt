@@ -186,9 +186,9 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
     val e = req.entry
     var type by remember { mutableStateOf(e?.type ?: req.type) }
     var date by remember { mutableStateOf(e?.let { LocalDate.ofEpochDay(it.date) } ?: LocalDate.now()) }
+    // Пробег по умолчанию подставляется по дате; галочка «задать самому» открывает поле для ввода
+    var kmManual by remember { mutableStateOf(e?.km != null && e.kmManual) }
     var km by remember { mutableStateOf(e?.km?.toString() ?: s.currentKm.toString()) }
-    // Пробег подставляется по дате, пока его не ввели вручную
-    var kmAuto by remember { mutableStateOf(e?.km == null) }
     var itemId by remember { mutableStateOf(e?.itemId ?: req.item?.id) }
     var title by remember { mutableStateOf(e?.title ?: "") }
     var amount by remember { mutableStateOf(e?.amount?.takeIf { it != 0.0 }?.let(Fmt::edit) ?: "") }
@@ -202,18 +202,19 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
     val dismiss = { dropDrafts(ui, drafts); close() }
     val hasParts = type == LogType.SERVICE || type == LogType.WORK || type == LogType.PART
 
-    val kmVal = if (km.isBlank()) null else parseKm(km)
+    val autoKm = s.kmAt(date.toEpochDay(), e?.id ?: 0)
+    val kmVal = if (!kmManual) autoKm else if (km.isBlank()) null else parseKm(km)
     val amountVal = if (amount.isBlank()) 0.0 else parseNum(amount)
     val partsVal = if (parts.isBlank()) 0.0 else parseNum(parts)
     val litersVal = if (liters.isBlank()) 0.0 else parseNum(liters)
-    val valid = (km.isBlank() || kmVal != null) && amountVal != null && partsVal != null && litersVal != null &&
+    val valid = (!kmManual || km.isBlank() || kmVal != null) && amountVal != null && partsVal != null && litersVal != null &&
         (type != LogType.SERVICE || itemId != null || title.isNotBlank()) && (type != LogType.WORK || title.isNotBlank())
 
     val kind = s.kind
     FormDialog(
         title = (if (e == null) tr("Новая запись: ", "Новий запис: ") else "") + logLabel(type, kind),
         onDismiss = dismiss,
-        dirty = changed(type, date, km, itemId, title, amount, parts, liters, full, note, PartRef.encode(partRefs)) || drafts.isNotEmpty(),
+        dirty = changed(type, date, kmManual, km, itemId, title, amount, parts, liters, full, note, PartRef.encode(partRefs)) || drafts.isNotEmpty(),
         confirmEnabled = valid,
         onConfirm = {
             val (brand, partNo) = if (hasParts) PartRef.encode(partRefs) else "" to ""
@@ -222,7 +223,7 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
                 itemId = if (type == LogType.SERVICE || type == LogType.PART) itemId else null,
                 title = title.trim(), amount = amountVal!!, parts = if (type == LogType.SERVICE || type == LogType.WORK) partsVal!! else 0.0,
                 liters = if (type == LogType.FUEL) litersVal!! else 0.0, full = full, note = note.trim(),
-                brand = brand, partNo = partNo,
+                brand = brand, partNo = partNo, kmManual = kmManual,
             )
             val files = drafts.toList()
             ui.repo.saveLog(entry) { id -> saveDrafts(ui, files, PhotoOwner.LOG, id, kmVal) }
@@ -237,11 +238,21 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
             ),
             type, { type = it },
         )
-        DateField(date, { date = it; if (kmAuto) km = s.kmAt(it.toEpochDay()).toString() })
-        NumField(
-            km, { km = it; kmAuto = false }, tr("Пробег", "Пробіг"), suffix = "км", decimal = false,
-            hint = if (kmAuto && date != LocalDate.now()) tr("Подставлен по показаниям на ${Fmt.day(date)}", "Підставлено за показниками на ${Fmt.day(date)}") else null,
-        )
+        DateField(date, { date = it })
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            NumField(
+                if (kmManual) km else autoKm.toString(), { km = it }, tr("Пробег", "Пробіг"), modifier = Modifier.weight(1f),
+                suffix = "км", decimal = false, enabled = kmManual,
+                hint = if (kmManual) null else tr("По показаниям на ${Fmt.day(date)}", "За показниками на ${Fmt.day(date)}"),
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { kmManual = !kmManual; if (kmManual) km = autoKm.toString() },
+            ) {
+                Checkbox(kmManual, { kmManual = it; if (it) km = autoKm.toString() })
+                Text(tr("Задать\nсамому", "Задати\nсамому"), style = MaterialTheme.typography.bodySmall)
+            }
+        }
         if (type == LogType.SERVICE || type == LogType.PART) {
             Picker(
                 if (type == LogType.SERVICE) tr("Пункт ТО", "Пункт ТО") else tr("Для пункта ТО (необязательно)", "Для пункту ТО (необов'язково)"),

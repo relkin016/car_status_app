@@ -193,14 +193,16 @@ fun NumField(
     suffix: String = "",
     decimal: Boolean = true,
     hint: String? = null,
+    enabled: Boolean = true,
 ) {
     var calc by remember { mutableStateOf(false) }
     OutlinedTextField(
         value = value,
+        enabled = enabled,
         onValueChange = { onChange(it.replace(',', '.')) },
         label = { Text(label) },
         suffix = suffix.takeIf { it.isNotEmpty() }?.let { { Text(it) } },
-        trailingIcon = { IconButton(onClick = { calc = true }) { Icon(Icons.Filled.Calculate, tr("Калькулятор", "Калькулятор")) } },
+        trailingIcon = if (enabled) { { IconButton(onClick = { calc = true }) { Icon(Icons.Filled.Calculate, tr("Калькулятор", "Калькулятор")) } } } else null,
         supportingText = if (Calc.isExpression(value)) {
             { Text("= " + (Calc.eval(value)?.let { fmtNum(it, decimal) } ?: tr("ошибка в выражении", "помилка у виразі"))) }
         } else hint?.let { { Text(it) } },

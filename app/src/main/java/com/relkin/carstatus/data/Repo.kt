@@ -78,7 +78,7 @@ class Repo(private val ctx: Context, val dbName: String) {
                     id = it.long("_id"), type = it.int("type"), date = it.long("date"), km = it.longOrNull("km"),
                     itemId = it.longOrNull("item_id"), title = it.str("title"), amount = it.dbl("amount"), parts = it.dbl("parts"),
                     liters = it.dbl("liters"), full = it.int("full") == 1, note = it.str("note"),
-                    brand = it.str("brand"), partNo = it.str("part_no"),
+                    brand = it.str("brand"), partNo = it.str("part_no"), kmManual = it.int("km_manual") == 1,
                 )
             },
             incidents = d.list("SELECT * FROM incidents ORDER BY time DESC") {
@@ -173,7 +173,7 @@ class Repo(private val ctx: Context, val dbName: String) {
         val v = values(
             "type" to e.type, "date" to e.date, "km" to e.km, "item_id" to e.itemId, "title" to e.title,
             "amount" to e.amount, "parts" to e.parts, "liters" to e.liters, "full" to e.full, "note" to e.note,
-            "brand" to e.brand, "part_no" to e.partNo,
+            "brand" to e.brand, "part_no" to e.partNo, "km_manual" to e.kmManual,
         )
         val id = if (e.id == 0L) insert("log", null, v) else { update("log", v, "_id=?", arrayOf(e.id.toString())); e.id }
         if (e.itemId != null) recomputeItem(e.itemId, e)
