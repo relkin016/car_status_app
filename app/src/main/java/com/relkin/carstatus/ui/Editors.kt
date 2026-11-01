@@ -172,6 +172,13 @@ fun <T> Picker(label: String, value: String, options: List<Pair<T, String>>, onP
 @Composable
 private fun rememberDraftPhotos() = remember { mutableStateListOf<String>() }
 
+/** Прикреплённые фото, убранные в форме: удаляются только при сохранении записи. */
+@Composable
+private fun rememberRemovedPhotos() = remember { mutableStateListOf<String>() }
+
+private fun deleteRemoved(ui: Ui, existing: List<Photo>, removed: List<String>) =
+    existing.filter { it.file in removed }.forEach(ui.repo::deletePhoto)
+
 private fun dropDrafts(ui: Ui, files: List<String>) = files.forEach { File(ui.repo.photoDir, it).delete() }
 
 private fun saveDrafts(ui: Ui, files: List<String>, type: Int, owner: Long, km: Long?) {
@@ -199,6 +206,8 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
     val partRefs = remember { mutableStateListOf<PartRef>().apply { addAll(e?.partRefs.orEmpty().ifEmpty { listOf(PartRef()) }) } }
     var confirmDelete by remember { mutableStateOf(false) }
     val drafts = rememberDraftPhotos()
+    val removed = rememberRemovedPhotos()
+    val photos = e?.let { s.photosOf(PhotoOwner.LOG, it.id) }.orEmpty()
     val dismiss = { dropDrafts(ui, drafts); close() }
     val hasParts = type == LogType.SERVICE || type == LogType.WORK || type == LogType.PART
 
@@ -214,7 +223,7 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
     FormDialog(
         title = (if (e == null) tr("Новая запись: ", "Новий запис: ") else "") + logLabel(type, kind),
         onDismiss = dismiss,
-        dirty = changed(type, date, kmManual, km, itemId, title, amount, parts, liters, full, note, PartRef.encode(partRefs)) || drafts.isNotEmpty(),
+        dirty = changed(type, date, kmManual, km, itemId, title, amount, parts, liters, full, note, PartRef.encode(partRefs)) || drafts.isNotEmpty() || removed.isNotEmpty(),
         confirmEnabled = valid,
         onConfirm = {
             val (brand, partNo) = if (hasParts) PartRef.encode(partRefs) else "" to ""
@@ -226,6 +235,7 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
                 brand = brand, partNo = partNo, kmManual = kmManual,
             )
             val files = drafts.toList()
+            deleteRemoved(ui, photos, removed)
             ui.repo.saveLog(entry) { id -> saveDrafts(ui, files, PhotoOwner.LOG, id, kmVal) }
             close()
         },
@@ -306,8 +316,9 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
         }
         OutlinedTextField(note, { note = it }, label = { Text(tr("Заметка", "Нотатка")) }, modifier = Modifier.fillMaxWidth(), minLines = 2)
         PhotoStrip(
-            existing = e?.let { s.photosOf(PhotoOwner.LOG, it.id).map { p -> p.file } }.orEmpty(),
+            existing = photos.map { it.file }.filter { it !in removed },
             added = drafts, onAdd = { drafts += it }, onRemoveAdded = { drafts -= it; File(ui.repo.photoDir, it).delete() },
+            onRemoveExisting = { removed += it },
         )
     }
     if (confirmDelete && e != null) ConfirmDialog(tr("Удалить запись?", "Видалити запис?"), tr("Запись и её фото будут удалены.", "Запис і його фото буде видалено."), onDismiss = { confirmDelete = false }) {
@@ -331,17 +342,20 @@ private fun IncidentDialog(i: Incident?, close: () -> Unit) {
     var severity by remember { mutableStateOf(i?.severity ?: 0) }
     var confirmDelete by remember { mutableStateOf(false) }
     val drafts = rememberDraftPhotos()
+    val removed = rememberRemovedPhotos()
+    val photos = i?.let { s.photosOf(PhotoOwner.INCIDENT, it.id) }.orEmpty()
     val dismiss = { dropDrafts(ui, drafts); close() }
     val kmVal = if (km.isBlank()) null else parseKm(km)
 
     FormDialog(
         title = if (i == null) tr("Запись в дневник", "Запис у щоденник") else tr("Дневник", "Щоденник"),
         onDismiss = dismiss,
-        dirty = changed(date, minutes, km, title, note, severity) || drafts.isNotEmpty(),
+        dirty = changed(date, minutes, km, title, note, severity) || drafts.isNotEmpty() || removed.isNotEmpty(),
         confirmEnabled = title.isNotBlank() && (km.isBlank() || kmVal != null),
         onConfirm = {
             val t = date.atTime(minutes / 60, minutes % 60).atZone(zone).toInstant().toEpochMilli()
             val files = drafts.toList()
+            deleteRemoved(ui, photos, removed)
             ui.repo.saveIncident(Incident(i?.id ?: 0, t, kmVal, title.trim(), note.trim(), severity)) { id ->
                 saveDrafts(ui, files, PhotoOwner.INCIDENT, id, kmVal)
             }
@@ -358,8 +372,9 @@ private fun IncidentDialog(i: Incident?, close: () -> Unit) {
         Segmented(listOf(0 to tr("Заметка", "Нотатка"), 1 to tr("Внимание", "Увага"), 2 to tr("Серьёзно", "Серйозно")), severity, { severity = it })
         OutlinedTextField(note, { note = it }, label = { Text(tr("Подробности: звук, условия, что делали", "Подробиці: звук, умови, що робили")) }, modifier = Modifier.fillMaxWidth(), minLines = 3)
         PhotoStrip(
-            existing = i?.let { s.photosOf(PhotoOwner.INCIDENT, it.id).map { p -> p.file } }.orEmpty(),
+            existing = photos.map { it.file }.filter { it !in removed },
             added = drafts, onAdd = { drafts += it }, onRemoveAdded = { drafts -= it; File(ui.repo.photoDir, it).delete() },
+            onRemoveExisting = { removed += it },
         )
         if (i == null) TextButton(onClick = {
             ui.edit = null

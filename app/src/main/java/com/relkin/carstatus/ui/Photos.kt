@@ -170,28 +170,34 @@ fun rememberPhotoAdder(onAdded: (String) -> Unit): PhotoAdder {
 
 /**
  * Полоса фото в форме: уже прикреплённые [existing] и новые [added] (ещё не сохранённые),
- * кнопки камеры и галереи.
+ * кнопки камеры и галереи. Крестик на миниатюре убирает фото из формы.
  */
 @Composable
-fun PhotoStrip(existing: List<String>, added: List<String>, onAdd: (String) -> Unit, onRemoveAdded: (String) -> Unit) {
+fun PhotoStrip(
+    existing: List<String>, added: List<String>, onAdd: (String) -> Unit,
+    onRemoveAdded: (String) -> Unit, onRemoveExisting: (String) -> Unit,
+) {
     val adder = rememberPhotoAdder(onAdd)
     var view by remember { mutableStateOf<String?>(null) }
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         OutlinedIconButton(onClick = adder.camera, modifier = Modifier.size(56.dp)) { Icon(Icons.Filled.PhotoCamera, tr("Снять фото", "Зробити фото")) }
         OutlinedIconButton(onClick = adder.gallery, modifier = Modifier.size(56.dp)) { Icon(Icons.Filled.AddPhotoAlternate, tr("Из галереи", "З галереї")) }
-        existing.forEach { PhotoThumb(it, 56.dp, maxSide = 160) { view = it } }
-        added.forEach { f ->
-            Box {
-                PhotoThumb(f, 56.dp, maxSide = 160) { view = f }
-                Icon(
-                    Icons.Filled.Close, tr("Убрать", "Прибрати"),
-                    Modifier.align(Alignment.TopEnd).size(18.dp).clip(RoundedCornerShape(9.dp))
-                        .background(MaterialTheme.colorScheme.errorContainer).clickable { onRemoveAdded(f) },
-                )
-            }
-        }
+        existing.forEach { f -> RemovableThumb(f, { view = f }) { onRemoveExisting(f) } }
+        added.forEach { f -> RemovableThumb(f, { view = f }) { onRemoveAdded(f) } }
     }
     view?.let { PhotoViewer(it, "", { view = null }) }
+}
+
+@Composable
+private fun RemovableThumb(file: String, onClick: () -> Unit, onRemove: () -> Unit) {
+    Box {
+        PhotoThumb(file, 56.dp, maxSide = 160, onClick = onClick)
+        Icon(
+            Icons.Filled.Close, tr("Убрать", "Прибрати"),
+            Modifier.align(Alignment.TopEnd).size(18.dp).clip(RoundedCornerShape(9.dp))
+                .background(MaterialTheme.colorScheme.errorContainer).clickable(onClick = onRemove),
+        )
+    }
 }
 
 @Composable
