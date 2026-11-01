@@ -188,9 +188,9 @@ data class Snapshot(
         maxOf(odo.maxOfOrNull { it.km } ?: 0L, log.maxOfOrNull { it.km ?: 0L } ?: 0L, incidents.maxOfOrNull { it.km ?: 0L } ?: 0L)
     }
 
-    /** Все показания одометра (дата, км), включая записи с пробегом. */
+    /** Все показания одометра (дата, км), включая записи с введённым вручную пробегом (подставленный — производный от показаний). */
     val readings: List<Pair<Long, Long>> by lazy {
-        (odo.map { it.date to it.km } + log.mapNotNull { e -> e.km?.let { e.date to it } })
+        (odo.map { it.date to it.km } + log.mapNotNull { e -> e.km?.takeIf { e.kmManual }?.let { e.date to it } })
             .sortedWith(compareBy({ it.first }, { it.second }))
     }
 

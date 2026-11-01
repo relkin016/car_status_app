@@ -51,8 +51,10 @@ object Costs {
         // Пробег за период: от последнего показания до начала периода (или первого внутри) до последнего внутри
         val r = s.readings
         val inside = r.filter { (from == null || it.first >= from) && it.first <= to }
+        // Одометр назад не идёт: показание до периода выше, чем внутри, — ошибочное (запись задним числом с текущим пробегом)
         val before = if (from == null) null else r.filter { it.first < from }.maxOfOrNull { it.second }
-        val startKm = before ?: inside.minOfOrNull { it.second }
+        val insideMin = inside.minOfOrNull { it.second }
+        val startKm = listOfNotNull(before, insideMin).minOrNull()
         val endKm = inside.maxOfOrNull { it.second }
         val km = if (startKm != null && endKm != null) (endKm - startKm).coerceAtLeast(0) else 0
 

@@ -61,7 +61,7 @@ class Repo(private val ctx: Context, val dbName: String) {
     private fun load(): Snapshot {
         val d = db
         val meta = d.list("SELECT key, value FROM meta") { it.str("key") to it.str("value") }.toMap()
-        return Snapshot(
+        val snap = Snapshot(
             car = meta["car"]?.let(::carFromJson) ?: Car(),
             setupDone = meta["setup"] == "1",
             odo = d.list("SELECT * FROM odo ORDER BY date, km") { Odo(it.long("_id"), it.long("date"), it.long("km"), it.int("source")) },
@@ -95,6 +95,9 @@ class Repo(private val ctx: Context, val dbName: String) {
             },
             questDone = d.list("SELECT key FROM quest_done") { it.str("key") }.toSet(),
         )
+        // Подставленный пробег считаем по текущим показаниям: показания, добавленные позже, его уточняют
+        if (snap.odo.isEmpty()) return snap
+        return snap.copy(log = snap.log.map { if (it.km != null && !it.kmManual) it.copy(km = snap.kmAt(it.date)) else it })
     }
 
     // ---------- Авто и первичная настройка ----------
