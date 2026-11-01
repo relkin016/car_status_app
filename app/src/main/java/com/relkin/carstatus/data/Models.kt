@@ -63,10 +63,13 @@ object LogType {
     const val SERVICE = 1
     const val PART = 2
     const val OTHER = 3
-    val all = listOf(FUEL, SERVICE, PART, OTHER)
+    /** Ремонт вне регламента ТО: проводка, кузов, подвеска и т.п. */
+    const val WORK = 4
+    val all = listOf(FUEL, SERVICE, WORK, PART, OTHER)
     fun label(t: Int) = when (t) {
         FUEL -> "Топливо"
-        SERVICE -> "ТО / работы"
+        SERVICE -> "ТО"
+        WORK -> "Работы"
         PART -> "Запчасти"
         else -> "Прочее"
     }
@@ -74,7 +77,7 @@ object LogType {
 
 /**
  * Запись: заправка, обслуживание, покупка запчасти, прочий расход.
- * Для ТО [amount] — стоимость работ, [parts] — запчастей/материалов. Для заправки [liters] и [full] — полный бак.
+ * Для ТО и работ [amount] — стоимость работ, [parts] — запчастей/материалов. Для заправки [liters] и [full] — полный бак.
  */
 data class LogEntry(
     val id: Long = 0,

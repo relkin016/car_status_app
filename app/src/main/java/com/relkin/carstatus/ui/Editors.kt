@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Handyman
 import androidx.compose.material.icons.filled.CarCrash
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.EvStation
@@ -88,6 +89,7 @@ private fun AddMenu(close: () -> Unit) {
         Triple(Icons.Filled.Speed, "Пробег") { go(Edit.Odo) },
         if (kind.energy == Energy.NONE) null else Triple(energyIcon(kind), kind.refuel) { go(Edit.Log(null, LogType.FUEL)) },
         Triple(Icons.Filled.Build, "Обслуживание (ТО)") { go(Edit.Log(null, LogType.SERVICE)) },
+        Triple(Icons.Filled.Handyman, "Работы (ремонт)") { go(Edit.Log(null, LogType.WORK)) },
         Triple(Icons.Filled.Inventory2, "Запчасти") { go(Edit.Log(null, LogType.PART)) },
         Triple(Icons.Filled.ReceiptLong, "Прочий расход") { go(Edit.Log(null, LogType.OTHER)) },
         Triple(Icons.Filled.CarCrash, "Запись в дневник") { go(Edit.IncidentE(null)) },
@@ -125,6 +127,7 @@ fun OdoDialog(close: () -> Unit) {
     FormDialog(
         title = "Текущий пробег",
         onDismiss = close,
+        dirty = changed(text, date),
         confirmEnabled = km != null,
         onConfirm = {
             ui.repo.addOdo(km!!, date.toEpochDay(), OdoSource.MANUAL)
@@ -194,18 +197,19 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
     val partsVal = if (parts.isBlank()) 0.0 else parseNum(parts)
     val litersVal = if (liters.isBlank()) 0.0 else parseNum(liters)
     val valid = (km.isBlank() || kmVal != null) && amountVal != null && partsVal != null && litersVal != null &&
-        (type != LogType.SERVICE || itemId != null || title.isNotBlank())
+        (type != LogType.SERVICE || itemId != null || title.isNotBlank()) && (type != LogType.WORK || title.isNotBlank())
 
     val kind = s.kind
     FormDialog(
         title = (if (e == null) "Новая запись: " else "") + logLabel(type, kind),
         onDismiss = dismiss,
+        dirty = changed(type, date, km, itemId, title, amount, parts, liters, full, note) || drafts.isNotEmpty(),
         confirmEnabled = valid,
         onConfirm = {
             val entry = LogEntry(
                 id = e?.id ?: 0, type = type, date = date.toEpochDay(), km = kmVal,
                 itemId = if (type == LogType.SERVICE || type == LogType.PART) itemId else null,
-                title = title.trim(), amount = amountVal!!, parts = if (type == LogType.SERVICE) partsVal!! else 0.0,
+                title = title.trim(), amount = amountVal!!, parts = if (type == LogType.SERVICE || type == LogType.WORK) partsVal!! else 0.0,
                 liters = if (type == LogType.FUEL) litersVal!! else 0.0, full = full, note = note.trim(),
             )
             val files = drafts.toList()
@@ -217,7 +221,7 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
         if (e == null) Segmented(
             listOfNotNull(
                 if (kind.energy == Energy.NONE) null else LogType.FUEL to (if (kind.energy == Energy.ELECTRIC) "Заряд" else "Топл."),
-                LogType.SERVICE to "ТО", LogType.PART to "Зап.", LogType.OTHER to "Проч.",
+                LogType.SERVICE to "ТО", LogType.WORK to "Раб.", LogType.PART to "Зап.", LogType.OTHER to "Проч.",
             ),
             type, { type = it },
         )
@@ -236,7 +240,7 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
         }
         OutlinedTextField(
             title, { title = it }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-            label = { Text(when (type) { LogType.FUEL -> if (kind.energy == Energy.ELECTRIC) "Где заряжали (дом, станция)" else "АЗС / марка топлива"; LogType.OTHER -> "Что (мойка, страховка, штраф…)"; else -> "Описание работ / деталей" }) },
+            label = { Text(when (type) { LogType.FUEL -> if (kind.energy == Energy.ELECTRIC) "Где заряжали (дом, станция)" else "АЗС / марка топлива"; LogType.OTHER -> "Что (мойка, страховка, штраф…)"; LogType.WORK -> "Что делали (проводка, кузов, подвеска…)"; else -> "Описание работ / деталей" }) },
         )
         when (type) {
             LogType.FUEL -> {
@@ -250,7 +254,7 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
                     Checkbox(full, { full = it }); Text(if (ev) "До 100% (для расчёта расхода)" else "Полный бак (для расчёта расхода)")
                 }
             }
-            LogType.SERVICE -> {
+            LogType.SERVICE, LogType.WORK -> {
                 NumField(amount, { amount = it }, "Работа", suffix = Fmt.currency)
                 NumField(parts, { parts = it }, "Запчасти и материалы", suffix = Fmt.currency)
             }
@@ -288,6 +292,7 @@ private fun IncidentDialog(i: Incident?, close: () -> Unit) {
     FormDialog(
         title = if (i == null) "Запись в дневник" else "Дневник",
         onDismiss = dismiss,
+        dirty = changed(date, minutes, km, title, note, severity) || drafts.isNotEmpty(),
         confirmEnabled = title.isNotBlank() && (km.isBlank() || kmVal != null),
         onConfirm = {
             val t = date.atTime(minutes / 60, minutes % 60).atZone(zone).toInstant().toEpochMilli()
@@ -335,6 +340,7 @@ private fun BreakdownDialog(b: Breakdown?, close: () -> Unit) {
     FormDialog(
         title = if (existing == null) "Новая поломка" else "Поломка",
         onDismiss = close,
+        dirty = changed(title, note, priority),
         confirmEnabled = title.isNotBlank(),
         onConfirm = {
             ui.repo.saveBreakdown(
@@ -365,6 +371,7 @@ private fun PhotoDialog(p: Photo, close: () -> Unit) {
     FormDialog(
         title = "Фото",
         onDismiss = close,
+        dirty = changed(caption, km),
         confirmEnabled = km.isBlank() || kmVal != null,
         onConfirm = { ui.repo.updatePhoto(p.copy(caption = caption.trim(), km = kmVal)); close() },
         extra = { TextButton(onClick = { confirmDelete = true }) { Text("Удалить") } },

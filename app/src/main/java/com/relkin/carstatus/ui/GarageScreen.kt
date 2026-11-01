@@ -186,6 +186,7 @@ fun GarageScreen() {
         FormDialog(
             title = if (editGarage == null) "Новый гараж" else "Гараж",
             onDismiss = { newGarage = false; editGarage = null },
+            dirty = changed(name),
             confirmEnabled = name.isNotBlank(),
             onConfirm = {
                 editGarage?.let { ui.garage.saveGarage(it.copy(name = name.trim())) } ?: ui.garage.addGarage(name.trim())

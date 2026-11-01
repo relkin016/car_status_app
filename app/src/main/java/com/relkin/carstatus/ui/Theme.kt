@@ -37,7 +37,7 @@ private val Dark = darkColorScheme(
 
 /**
  * Цвета данных. Статусы (HP) — отдельная фиксированная палитра, всегда с подписью %;
- * категории расходов — первые четыре категориальных слота в постоянном порядке.
+ * категории расходов — первые пять категориальных слотов в постоянном порядке.
  */
 data class DataColors(
     val good: Color, val warning: Color, val serious: Color, val critical: Color,
@@ -76,8 +76,8 @@ fun CarTheme(prefs: Prefs, content: @Composable () -> Unit) {
     }
     val data = DataColors(
         good = Color(0xFF0CA30C), warning = Color(0xFFFAB219), serious = Color(0xFFEC835A), critical = Color(0xFFD03B3B),
-        cats = if (dark) listOf(Color(0xFF3987E5), Color(0xFFD95926), Color(0xFF199E70), Color(0xFFC98500))
-        else listOf(Color(0xFF2A78D6), Color(0xFFEB6834), Color(0xFF1BAF7A), Color(0xFFEDA100)),
+        cats = if (dark) listOf(Color(0xFF3987E5), Color(0xFFD95926), Color(0xFF9A6BDB), Color(0xFF199E70), Color(0xFFC98500))
+        else listOf(Color(0xFF2A78D6), Color(0xFFEB6834), Color(0xFF8A55D0), Color(0xFF1BAF7A), Color(0xFFEDA100)),
         track = if (dark) Color(0xFF383835) else Color(0xFFE1E0D9),
         gap = scheme.surfaceContainerLow,
     )

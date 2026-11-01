@@ -123,6 +123,7 @@ fun ItemEditDialog(item: Item, close: () -> Unit) {
     FormDialog(
         title = if (item.id == 0L) "Новый пункт ТО" else "Пункт ТО",
         onDismiss = close,
+        dirty = changed(name, icon, km, days, lastKm, lastDate, note),
         confirmEnabled = name.isNotBlank() && kmV != null && daysV != null && (lastKm.isBlank() || lastKmV != null),
         onConfirm = {
             ui.repo.saveItem(item.copy(name = name.trim(), icon = icon, kmInterval = kmV!!, dayInterval = daysV!!, lastKm = lastKmV, lastDate = lastDate?.toEpochDay(), note = note.trim()))

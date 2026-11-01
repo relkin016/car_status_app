@@ -5,7 +5,7 @@ import java.time.YearMonth
 
 /** Категории «реальной цены километра». */
 enum class CostCat(val label: String) {
-    FUEL("Топливо"), SERVICE("ТО / работы"), PARTS("Запчасти"), OTHER("Прочее");
+    FUEL("Топливо"), SERVICE("ТО"), WORK("Работы"), PARTS("Запчасти"), OTHER("Прочее");
 
     /** «Топливо» у электротранспорта — «Электричество». */
     fun label(kind: VehicleKind) = if (this == FUEL) kind.energyLabel else label
@@ -35,6 +35,7 @@ object Costs {
     fun split(e: LogEntry): Map<CostCat, Double> = when (e.type) {
         LogType.FUEL -> mapOf(CostCat.FUEL to e.total)
         LogType.SERVICE -> mapOf(CostCat.SERVICE to e.amount, CostCat.PARTS to e.parts)
+        LogType.WORK -> mapOf(CostCat.WORK to e.amount, CostCat.PARTS to e.parts)
         LogType.PART -> mapOf(CostCat.PARTS to e.total)
         else -> mapOf(CostCat.OTHER to e.total)
     }

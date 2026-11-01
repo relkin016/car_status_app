@@ -26,6 +26,7 @@ object Reports {
         when (e.type) {
             LogType.FUEL -> s.kind.refuel + if (e.liters > 0) " ${Fmt.dec(e.liters)} ${s.kind.unit}" else ""
             LogType.SERVICE -> s.item(e.itemId)?.name ?: "Обслуживание"
+            LogType.WORK -> "Работы"
             LogType.PART -> "Запчасти"
             else -> "Расход"
         }
@@ -41,7 +42,7 @@ object Reports {
         appendLine()
         carHeader(s)
 
-        val services = s.log.filter { it.type == LogType.SERVICE || it.type == LogType.PART }.sortedWith(compareBy({ it.date }, { it.km ?: 0 }))
+        val services = s.log.filter { it.type == LogType.SERVICE || it.type == LogType.WORK || it.type == LogType.PART }.sortedWith(compareBy({ it.date }, { it.km ?: 0 }))
         val first = s.readings.firstOrNull()
         appendLine("## Кратко")
         appendLine()
@@ -54,7 +55,7 @@ object Reports {
         appendLine("- Открытых неисправностей: **${open.size}**")
         if (withCosts) {
             val r = Costs.report(s, null)
-            appendLine("- Вложено в обслуживание и запчасти: **${Fmt.money((r.byCat[CostCat.SERVICE] ?: 0.0) + (r.byCat[CostCat.PARTS] ?: 0.0))}**")
+            appendLine("- Вложено в обслуживание, работы и запчасти: **${Fmt.money((r.byCat[CostCat.SERVICE] ?: 0.0) + (r.byCat[CostCat.WORK] ?: 0.0) + (r.byCat[CostCat.PARTS] ?: 0.0))}**")
             r.consumption?.let { appendLine("- Средний расход: **${Fmt.dec(it)} ${s.kind.unit}/100 км**") }
         }
         appendLine()
@@ -157,7 +158,7 @@ object Reports {
         var run = 0.0
         r.entries.forEachIndexed { i, e ->
             run += e.total
-            val cat = if (e.type == LogType.SERVICE && e.parts > 0 && e.amount > 0) "ТО + запчасти" else if (e.type == LogType.FUEL) s.kind.refuel else LogType.label(e.type)
+            val cat = if ((e.type == LogType.SERVICE || e.type == LogType.WORK) && e.parts > 0 && e.amount > 0) LogType.label(e.type) + " + запчасти" else if (e.type == LogType.FUEL) s.kind.refuel else LogType.label(e.type)
             val name = entryTitle(s, e) + if (e.note.isNotBlank()) " (${e.note})" else ""
             appendLine("| ${i + 1} | ${Fmt.day(e.date)} | ${e.km?.let { Fmt.num(it) } ?: "—"} | ${cell(name)} | $cat | −${Fmt.money2(e.total)} | ${Fmt.money2(run)} |")
         }
@@ -179,8 +180,8 @@ object Reports {
         if (r.byMonth.size > 1) {
             appendLine("## По месяцам")
             appendLine()
-            appendLine("| Месяц | ${s.kind.energyLabel} | ТО | Запчасти | Прочее | Итого |")
-            appendLine("|---|---:|---:|---:|---:|---:|")
+            appendLine("| Месяц | ${s.kind.energyLabel} | ТО | Работы | Запчасти | Прочее | Итого |")
+            appendLine("|---|---:|---:|---:|---:|---:|---:|")
             for ((m, v) in r.byMonth) {
                 val t = v.values.sum()
                 appendLine("| ${Fmt.month(m.atDay(1))} | ${CostCat.entries.joinToString(" | ") { Fmt.money(v[it] ?: 0.0) }} | ${Fmt.money(t)} |")

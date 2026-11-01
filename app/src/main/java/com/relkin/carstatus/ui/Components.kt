@@ -346,6 +346,17 @@ fun ModeSelector(mode: Int, onChange: (Int) -> Unit) =
     Segmented(Mode.labels.mapIndexed { i, s -> i to s }, mode, onChange)
 
 /** Диалог-форма с прокруткой. */
+/** true, если хоть одно значение отличается от того, что было при первом показе формы. */
+@Composable
+fun changed(vararg values: Any?): Boolean {
+    val initial = remember { values.toList() }
+    return values.toList() != initial
+}
+
+/**
+ * Диалог-форма. При [dirty] (есть несохранённые изменения) закрытие тапом мимо, «Назад» или «Отмена»
+ * сначала спрашивает подтверждение — чтобы случайно не потерять введённое.
+ */
 @Composable
 fun FormDialog(
     title: String,
@@ -354,10 +365,13 @@ fun FormDialog(
     confirmEnabled: Boolean = true,
     onConfirm: () -> Unit,
     extra: (@Composable () -> Unit)? = null,
+    dirty: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    var askExit by remember { mutableStateOf(false) }
+    val tryDismiss = { if (dirty) askExit = true else onDismiss() }
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = tryDismiss,
         title = { Text(title) },
         text = {
             Column(
@@ -370,9 +384,16 @@ fun FormDialog(
         dismissButton = {
             Row {
                 extra?.invoke()
-                TextButton(onClick = onDismiss) { Text("Отмена") }
+                TextButton(onClick = tryDismiss) { Text("Отмена") }
             }
         },
+    )
+    if (askExit) AlertDialog(
+        onDismissRequest = { askExit = false },
+        title = { Text("Выйти без сохранения?") },
+        text = { Text("Введённые данные будут потеряны.") },
+        confirmButton = { TextButton(onClick = { askExit = false; onDismiss() }) { Text("Выйти") } },
+        dismissButton = { TextButton(onClick = { askExit = false }) { Text("Продолжить ввод") } },
     )
 }
 

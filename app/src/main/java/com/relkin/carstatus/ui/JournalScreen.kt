@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Handyman
 import androidx.compose.material.icons.filled.CarCrash
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Inventory2
@@ -61,7 +62,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
-private enum class JFilter(val label: String) { ALL("Все"), SERVICE("ТО"), FUEL("Заправки"), COST("Расходы"), DIARY("Дневник"), ODO("Пробег") }
+private enum class JFilter(val label: String) { ALL("Все"), SERVICE("ТО и работы"), FUEL("Заправки"), COST("Расходы"), DIARY("Дневник"), ODO("Пробег") }
 
 private fun JFilter.label(kind: VehicleKind) = if (this == JFilter.FUEL && kind.energy == Energy.ELECTRIC) "Зарядки" else label
 
@@ -85,6 +86,7 @@ private fun rows(s: Snapshot): List<JRow> {
         val (icon, f) = when (e.type) {
             LogType.FUEL -> energyIcon(s.kind) to JFilter.FUEL
             LogType.SERVICE -> Icons.Filled.Build to JFilter.SERVICE
+            LogType.WORK -> Icons.Filled.Handyman to JFilter.SERVICE
             LogType.PART -> Icons.Filled.Inventory2 to JFilter.COST
             else -> Icons.Filled.ReceiptLong to JFilter.COST
         }
