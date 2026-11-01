@@ -93,14 +93,36 @@ data class LogEntry(
     val liters: Double = 0.0,
     val full: Boolean = true,
     val note: String = "",
-    /** Производитель детали/материала (для ТО, работ, запчастей). */
+    /** Производители деталей/материалов (для ТО, работ, запчастей) — по строке на позицию, парно с [partNo]. */
     val brand: String = "",
-    /** Артикул (номер детали) — можно несколько через запятую. */
+    /** Артикулы (номера деталей) — по строке на позицию, парно с [brand]. */
     val partNo: String = "",
 ) {
     val total: Double get() = amount + parts
-    /** «Бренд · арт. 123» для списков и отчётов. */
-    val partInfo: String get() = listOfNotNull(brand.trim().ifBlank { null }, partNo.trim().ifBlank { null }?.let { "арт. $it" }).joinToString(" · ")
+    /** Позиции «бренд + артикул», пустые отброшены. */
+    val partRefs: List<PartRef> get() = PartRef.decode(brand, partNo)
+    /** «Бренд · арт. 123; Бренд2 · арт. 456» для списков и отчётов. */
+    val partInfo: String get() = partRefs.joinToString("; ") { it.label }
+}
+
+/** Деталь в записи: производитель и артикул. */
+data class PartRef(val brand: String = "", val partNo: String = "") {
+    val isBlank: Boolean get() = brand.isBlank() && partNo.isBlank()
+    val label: String get() = listOfNotNull(brand.trim().ifBlank { null }, partNo.trim().ifBlank { null }?.let { "арт. $it" }).joinToString(" · ")
+
+    companion object {
+        /** Позиции хранятся в колонках brand/part_no построчно; старые записи — одна позиция. */
+        fun decode(brand: String, partNo: String): List<PartRef> {
+            val b = brand.split('\n'); val p = partNo.split('\n')
+            return List(maxOf(b.size, p.size)) { PartRef(b.getOrElse(it) { "" }.trim(), p.getOrElse(it) { "" }.trim()) }.filterNot { it.isBlank }
+        }
+
+        /** Обратно в пару строк (brand, partNo) для записи в БД. */
+        fun encode(refs: List<PartRef>): Pair<String, String> {
+            val list = refs.map { PartRef(it.brand.trim().replace('\n', ' '), it.partNo.trim().replace('\n', ' ')) }.filterNot { it.isBlank }
+            return list.joinToString("\n") { it.brand } to list.joinToString("\n") { it.partNo }
+        }
+    }
 }
 
 /** Запись дневника: происшествие, странный звук, ДТП, поломка в пути. */

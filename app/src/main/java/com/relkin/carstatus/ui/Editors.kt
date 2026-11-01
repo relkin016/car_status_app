@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Handyman
 import androidx.compose.material.icons.filled.CarCrash
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.EvStation
 import androidx.compose.material.icons.filled.LocalGasStation
@@ -24,6 +26,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -45,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import com.relkin.carstatus.data.Breakdown
 import com.relkin.carstatus.data.Incident
 import com.relkin.carstatus.data.LogEntry
+import com.relkin.carstatus.data.PartRef
 import com.relkin.carstatus.data.LogType
 import com.relkin.carstatus.data.OdoSource
 import com.relkin.carstatus.data.Photo
@@ -192,8 +196,7 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
     var liters by remember { mutableStateOf(e?.liters?.takeIf { it != 0.0 }?.let(Fmt::edit) ?: "") }
     var full by remember { mutableStateOf(e?.full ?: true) }
     var note by remember { mutableStateOf(e?.note ?: "") }
-    var brand by remember { mutableStateOf(e?.brand ?: "") }
-    var partNo by remember { mutableStateOf(e?.partNo ?: "") }
+    val partRefs = remember { mutableStateListOf<PartRef>().apply { addAll(e?.partRefs.orEmpty().ifEmpty { listOf(PartRef()) }) } }
     var confirmDelete by remember { mutableStateOf(false) }
     val drafts = rememberDraftPhotos()
     val dismiss = { dropDrafts(ui, drafts); close() }
@@ -210,15 +213,16 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
     FormDialog(
         title = (if (e == null) tr("Новая запись: ", "Новий запис: ") else "") + logLabel(type, kind),
         onDismiss = dismiss,
-        dirty = changed(type, date, km, itemId, title, amount, parts, liters, full, note, brand, partNo) || drafts.isNotEmpty(),
+        dirty = changed(type, date, km, itemId, title, amount, parts, liters, full, note, PartRef.encode(partRefs)) || drafts.isNotEmpty(),
         confirmEnabled = valid,
         onConfirm = {
+            val (brand, partNo) = if (hasParts) PartRef.encode(partRefs) else "" to ""
             val entry = LogEntry(
                 id = e?.id ?: 0, type = type, date = date.toEpochDay(), km = kmVal,
                 itemId = if (type == LogType.SERVICE || type == LogType.PART) itemId else null,
                 title = title.trim(), amount = amountVal!!, parts = if (type == LogType.SERVICE || type == LogType.WORK) partsVal!! else 0.0,
                 liters = if (type == LogType.FUEL) litersVal!! else 0.0, full = full, note = note.trim(),
-                brand = if (hasParts) brand.trim() else "", partNo = if (hasParts) partNo.trim() else "",
+                brand = brand, partNo = partNo,
             )
             val files = drafts.toList()
             ui.repo.saveLog(entry) { id -> saveDrafts(ui, files, PhotoOwner.LOG, id, kmVal) }
@@ -246,8 +250,8 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
             ) { id ->
                 itemId = id
                 // Подсказка из прошлой замены этого пункта
-                if (brand.isBlank() && partNo.isBlank()) s.log.firstOrNull { it.itemId == id && it.id != e?.id && it.partInfo.isNotBlank() }?.let {
-                    brand = it.brand; partNo = it.partNo
+                if (partRefs.all { it.isBlank }) s.log.firstOrNull { it.itemId == id && it.id != e?.id && it.partInfo.isNotBlank() }?.let {
+                    partRefs.clear(); partRefs.addAll(it.partRefs)
                 }
             }
             if (type == LogType.SERVICE && itemId != null) Text(
@@ -277,9 +281,17 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
             }
             else -> NumField(amount, { amount = it }, tr("Сумма", "Сума"), suffix = Fmt.currency)
         }
-        if (hasParts) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(brand, { brand = it }, label = { Text(tr("Бренд", "Бренд")) }, singleLine = true, modifier = Modifier.weight(1f))
-            OutlinedTextField(partNo, { partNo = it.uppercase() }, label = { Text(tr("Артикул", "Артикул")) }, singleLine = true, modifier = Modifier.weight(1f))
+        if (hasParts) {
+            partRefs.forEachIndexed { i, ref ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(ref.brand, { partRefs[i] = ref.copy(brand = it) }, label = { Text(tr("Бренд", "Бренд")) }, singleLine = true, modifier = Modifier.weight(1f))
+                    OutlinedTextField(ref.partNo, { partRefs[i] = ref.copy(partNo = it.uppercase()) }, label = { Text(tr("Артикул", "Артикул")) }, singleLine = true, modifier = Modifier.weight(1f))
+                    if (partRefs.size > 1) IconButton(onClick = { partRefs.removeAt(i) }) { Icon(Icons.Filled.Close, tr("Убрать деталь", "Прибрати деталь")) }
+                }
+            }
+            TextButton(onClick = { partRefs += PartRef() }) {
+                Icon(Icons.Filled.Add, null); Text(tr("Добавить деталь", "Додати деталь"))
+            }
         }
         OutlinedTextField(note, { note = it }, label = { Text(tr("Заметка", "Нотатка")) }, modifier = Modifier.fillMaxWidth(), minLines = 2)
         PhotoStrip(

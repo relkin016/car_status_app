@@ -8,7 +8,7 @@ plugins {
 }
 
 // Версия приложения: versionCode выводится из versionName (major*10000 + minor*100 + patch).
-val appVersion = "0.5.0"
+val appVersion = "0.6.0"
 
 android {
     namespace = "com.relkin.carstatus"
