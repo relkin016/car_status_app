@@ -3,6 +3,17 @@ package com.relkin.carstatus.ui
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.pdf.PdfRenderer
+import android.os.ParcelFileDescriptor
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.material3.CardDefaults
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import com.relkin.carstatus.util.Doc
+import com.relkin.carstatus.util.Pdf
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -21,7 +32,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
@@ -65,7 +75,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.relkin.carstatus.BuildConfig
@@ -122,8 +131,8 @@ fun MoreScreen() {
             item { Entry(Icons.Filled.PhotoLibrary, "Фото-журнал") { ui.push(Route.Photos) } }
             item { Entry(Icons.Filled.Speed, "Показания одометра") { ui.push(Route.Odo) } }
             item { SectionTitle("Отчёты") }
-            item { Entry(Icons.Filled.History, "История для покупателя", "Полная история обслуживания одним документом (.md)") { ui.push(Route.Report(ReportKind.BUYER)) } }
-            item { Entry(Icons.AutoMirrored.Filled.ReceiptLong, "Выписка расходов", "Как банковская: операции, итоги, цена км (.md)") { ui.push(Route.Report(ReportKind.STATEMENT)) } }
+            item { Entry(Icons.Filled.History, "История для покупателя", "Полная история обслуживания одним документом (PDF)") { ui.push(Route.Report(ReportKind.BUYER)) } }
+            item { Entry(Icons.AutoMirrored.Filled.ReceiptLong, "Выписка расходов", "Как банковская: операции, итоги, цена км (PDF)") { ui.push(Route.Report(ReportKind.STATEMENT)) } }
             item { SectionTitle("Данные") }
             item { Entry(Icons.Filled.Backup, "Экспорт базы (резервная копия)", "Файл .zip: все гаражи, транспорт и фото") { exportLauncher.launch("carstatus-${LocalDate.now()}.zip") } }
             item { Entry(Icons.Filled.Restore, "Восстановить из копии", "Текущие данные будут заменены") { importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) } }
@@ -168,15 +177,40 @@ private fun shareApk(ctx: Context, ui: Ui) {
     }.onFailure { ui.toast("Не удалось: ${it.message}") }
 }
 
-private fun shareText(ctx: Context, name: String, text: String) {
-    val dir = File(ctx.cacheDir, "share").apply { mkdirs() }
-    val f = File(dir, name).apply { writeText(text) }
+private fun sharePdf(ctx: Context, f: File) {
     val uri = PhotoStore.uri(ctx, f)
-    val send = Intent(Intent.ACTION_SEND).setType("text/markdown")
-        .putExtra(Intent.EXTRA_STREAM, uri).putExtra(Intent.EXTRA_SUBJECT, name).putExtra(Intent.EXTRA_TEXT, text)
+    val send = Intent(Intent.ACTION_SEND).setType("application/pdf")
+        .putExtra(Intent.EXTRA_STREAM, uri).putExtra(Intent.EXTRA_SUBJECT, f.name)
         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    send.clipData = ClipData.newRawUri(name, uri)
+    send.clipData = ClipData.newRawUri(f.name, uri)
     ctx.startActivity(Intent.createChooser(send, "Отправить документ"))
+}
+
+/** Готовый PDF и его страницы картинками для предпросмотра. */
+private class RenderedPdf(val file: File, val pages: List<Bitmap>)
+
+private val pdfLock = Any()
+
+private fun renderPdf(ctx: Context, name: String, doc: Doc): RenderedPdf = synchronized(pdfLock) {
+    val dir = File(ctx.cacheDir, "share").apply { mkdirs() }
+    val f = File(dir, name)
+    val tmp = File(dir, "$name.tmp")
+    tmp.outputStream().use { Pdf.write(doc, it) }
+    tmp.renameTo(f)
+    val pages = ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
+        PdfRenderer(fd).use { r ->
+            (0 until r.pageCount).map { i ->
+                r.openPage(i).use { p ->
+                    val w = 1080
+                    Bitmap.createBitmap(w, w * p.height / p.width, Bitmap.Config.ARGB_8888).also { bmp ->
+                        bmp.eraseColor(android.graphics.Color.WHITE)
+                        p.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                    }
+                }
+            }
+        }
+    }
+    RenderedPdf(f, pages)
 }
 
 @Composable
@@ -187,17 +221,23 @@ fun ReportScreen(kind: ReportKind) {
     val s by ui.repo.snap.collectAsState()
     val withCosts by ui.prefs.reportCosts.state.collectAsState()
     val period = PeriodState.period
-    val text = remember(s, withCosts, period, kind) {
-        when (kind) {
-            ReportKind.BUYER -> Reports.buyerHistory(s, Health.of(s, s.fallbackKmPerDay), BuildConfig.VERSION_NAME, withCosts == 1)
-            ReportKind.STATEMENT -> Reports.statement(s, Costs.report(s, period.from()))
-        }
+    val name = (if (kind == ReportKind.BUYER) "history" else "statement") + "-${LocalDate.now()}.pdf"
+    val pdf by produceState<RenderedPdf?>(null, s, withCosts, period, kind) {
+        value = withContext(Dispatchers.IO) {
+            runCatching {
+                val doc = when (kind) {
+                    ReportKind.BUYER -> Reports.buyerHistory(s, Health.of(s, s.fallbackKmPerDay), BuildConfig.VERSION_NAME, withCosts == 1)
+                    ReportKind.STATEMENT -> Reports.statement(s, Costs.report(s, period.from()), BuildConfig.VERSION_NAME)
+                }
+                renderPdf(ctx, name, doc)
+            }
+        }.onFailure { ui.toast("Не удалось сформировать PDF: ${it.message}") }.getOrNull()
     }
-    val name = (if (kind == ReportKind.BUYER) "history" else "statement") + "-${LocalDate.now()}.md"
-    val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/markdown")) { uri ->
-        uri ?: return@rememberLauncherForActivityResult
+    val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
+        val f = pdf?.file
+        if (uri == null || f == null) return@rememberLauncherForActivityResult
         scope.launch {
-            val r = withContext(Dispatchers.IO) { runCatching { ctx.contentResolver.openOutputStream(uri)!!.use { it.write(text.toByteArray()) } } }
+            val r = withContext(Dispatchers.IO) { runCatching { ctx.contentResolver.openOutputStream(uri)!!.use { out -> f.inputStream().use { it.copyTo(out) } } } }
             ui.toast(r.fold({ "Сохранено" }, { "Ошибка: ${it.message}" }))
         }
     }
@@ -209,16 +249,16 @@ fun ReportScreen(kind: ReportKind) {
                 Period.entries.forEach { p -> FilterChip(period == p, { PeriodState.period = p }, label = { Text(p.label) }) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                Button(onClick = { shareText(ctx, name, text) }, modifier = Modifier.weight(1f)) { Icon(Icons.Filled.Share, null); Spacer(Modifier.padding(4.dp)); Text("Отправить") }
-                OutlinedButton(onClick = { save.launch(name) }, modifier = Modifier.weight(1f)) { Icon(Icons.Filled.Save, null); Spacer(Modifier.padding(4.dp)); Text("Сохранить .md") }
+                Button(onClick = { pdf?.let { sharePdf(ctx, it.file) } }, enabled = pdf != null, modifier = Modifier.weight(1f)) { Icon(Icons.Filled.Share, null); Spacer(Modifier.padding(4.dp)); Text("Отправить") }
+                OutlinedButton(onClick = { save.launch(name) }, enabled = pdf != null, modifier = Modifier.weight(1f)) { Icon(Icons.Filled.Save, null); Spacer(Modifier.padding(4.dp)); Text("Сохранить PDF") }
             }
-            Card(Modifier.fillMaxSize().padding(bottom = 12.dp)) {
-                SelectionContainer {
-                    Text(
-                        text, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).horizontalScroll(rememberScrollState()).padding(12.dp),
-                        softWrap = false,
-                    )
+            val pages = pdf?.pages
+            if (pages == null) LinearProgressIndicator(Modifier.fillMaxWidth())
+            else LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 12.dp)) {
+                items(pages) { bmp ->
+                    Card(elevation = CardDefaults.cardElevation(2.dp)) {
+                        Image(bmp.asImageBitmap(), null, Modifier.fillMaxWidth().aspectRatio(bmp.width.toFloat() / bmp.height), contentScale = ContentScale.FillWidth)
+                    }
                 }
             }
         }

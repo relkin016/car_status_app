@@ -122,6 +122,7 @@ fun OdoDialog(close: () -> Unit) {
     val s by ui.repo.snap.collectAsState()
     var text by remember { mutableStateOf(s.currentKm.toString()) }
     var date by remember { mutableStateOf(LocalDate.now()) }
+    var auto by remember { mutableStateOf(true) }
     val km = parseKm(text)
     val less = km != null && km < s.currentKm
     FormDialog(
@@ -136,11 +137,11 @@ fun OdoDialog(close: () -> Unit) {
         },
     ) {
         NumField(
-            text, { text = it }, "Пробег", suffix = "км", decimal = false,
+            text, { text = it; auto = false }, "Пробег", suffix = "км", decimal = false,
             hint = if (less) "Меньше последнего (${Fmt.km(s.currentKm)}) — проверьте" else "Было: ${Fmt.km(s.currentKm)}" +
                 (s.lastOdoDate?.let { " от ${Fmt.day(it)}" } ?: ""),
         )
-        DateField(date, { date = it })
+        DateField(date, { date = it; if (auto) text = s.kmAt(it.toEpochDay()).toString() })
     }
 }
 
@@ -181,6 +182,8 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
     var type by remember { mutableStateOf(e?.type ?: req.type) }
     var date by remember { mutableStateOf(e?.let { LocalDate.ofEpochDay(it.date) } ?: LocalDate.now()) }
     var km by remember { mutableStateOf(e?.km?.toString() ?: s.currentKm.toString()) }
+    // Пробег подставляется по дате, пока его не ввели вручную
+    var kmAuto by remember { mutableStateOf(e?.km == null) }
     var itemId by remember { mutableStateOf(e?.itemId ?: req.item?.id) }
     var title by remember { mutableStateOf(e?.title ?: "") }
     var amount by remember { mutableStateOf(e?.amount?.takeIf { it != 0.0 }?.let(Fmt::edit) ?: "") }
@@ -188,9 +191,12 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
     var liters by remember { mutableStateOf(e?.liters?.takeIf { it != 0.0 }?.let(Fmt::edit) ?: "") }
     var full by remember { mutableStateOf(e?.full ?: true) }
     var note by remember { mutableStateOf(e?.note ?: "") }
+    var brand by remember { mutableStateOf(e?.brand ?: "") }
+    var partNo by remember { mutableStateOf(e?.partNo ?: "") }
     var confirmDelete by remember { mutableStateOf(false) }
     val drafts = rememberDraftPhotos()
     val dismiss = { dropDrafts(ui, drafts); close() }
+    val hasParts = type == LogType.SERVICE || type == LogType.WORK || type == LogType.PART
 
     val kmVal = if (km.isBlank()) null else parseKm(km)
     val amountVal = if (amount.isBlank()) 0.0 else parseNum(amount)
@@ -203,7 +209,7 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
     FormDialog(
         title = (if (e == null) "Новая запись: " else "") + logLabel(type, kind),
         onDismiss = dismiss,
-        dirty = changed(type, date, km, itemId, title, amount, parts, liters, full, note) || drafts.isNotEmpty(),
+        dirty = changed(type, date, km, itemId, title, amount, parts, liters, full, note, brand, partNo) || drafts.isNotEmpty(),
         confirmEnabled = valid,
         onConfirm = {
             val entry = LogEntry(
@@ -211,6 +217,7 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
                 itemId = if (type == LogType.SERVICE || type == LogType.PART) itemId else null,
                 title = title.trim(), amount = amountVal!!, parts = if (type == LogType.SERVICE || type == LogType.WORK) partsVal!! else 0.0,
                 liters = if (type == LogType.FUEL) litersVal!! else 0.0, full = full, note = note.trim(),
+                brand = if (hasParts) brand.trim() else "", partNo = if (hasParts) partNo.trim() else "",
             )
             val files = drafts.toList()
             ui.repo.saveLog(entry) { id -> saveDrafts(ui, files, PhotoOwner.LOG, id, kmVal) }
@@ -225,14 +232,23 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
             ),
             type, { type = it },
         )
-        DateField(date, { date = it })
-        NumField(km, { km = it }, "Пробег", suffix = "км", decimal = false)
+        DateField(date, { date = it; if (kmAuto) km = s.kmAt(it.toEpochDay()).toString() })
+        NumField(
+            km, { km = it; kmAuto = false }, "Пробег", suffix = "км", decimal = false,
+            hint = if (kmAuto && date != LocalDate.now()) "Подставлен по показаниям на ${Fmt.day(date)}" else null,
+        )
         if (type == LogType.SERVICE || type == LogType.PART) {
             Picker(
                 if (type == LogType.SERVICE) "Пункт ТО" else "Для пункта ТО (необязательно)",
                 s.item(itemId)?.name ?: "— другое —",
                 listOf<Pair<Long?, String>>(null to "— другое —") + s.items.map { it.id to it.name },
-            ) { itemId = it }
+            ) { id ->
+                itemId = id
+                // Подсказка из прошлой замены этого пункта
+                if (brand.isBlank() && partNo.isBlank()) s.log.firstOrNull { it.itemId == id && it.id != e?.id && it.partInfo.isNotBlank() }?.let {
+                    brand = it.brand; partNo = it.partNo
+                }
+            }
             if (type == LogType.SERVICE && itemId != null) Text(
                 "Запись обновит «последнее обслуживание» пункта и восстановит его HP.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -260,6 +276,10 @@ private fun LogDialog(req: Edit.Log, close: () -> Unit) {
             }
             else -> NumField(amount, { amount = it }, "Сумма", suffix = Fmt.currency)
         }
+        if (hasParts) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(brand, { brand = it }, label = { Text("Бренд") }, singleLine = true, modifier = Modifier.weight(1f))
+            OutlinedTextField(partNo, { partNo = it.uppercase() }, label = { Text("Артикул") }, singleLine = true, modifier = Modifier.weight(1f))
+        }
         OutlinedTextField(note, { note = it }, label = { Text("Заметка") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
         PhotoStrip(
             existing = e?.let { s.photosOf(PhotoOwner.LOG, it.id).map { p -> p.file } }.orEmpty(),
@@ -281,6 +301,7 @@ private fun IncidentDialog(i: Incident?, close: () -> Unit) {
     var minutes by remember { mutableStateOf(initial.hour * 60 + initial.minute) }
     var pickTime by remember { mutableStateOf(false) }
     var km by remember { mutableStateOf(i?.km?.toString() ?: s.currentKm.toString()) }
+    var kmAuto by remember { mutableStateOf(i?.km == null) }
     var title by remember { mutableStateOf(i?.title ?: "") }
     var note by remember { mutableStateOf(i?.note ?: "") }
     var severity by remember { mutableStateOf(i?.severity ?: 0) }
@@ -306,10 +327,10 @@ private fun IncidentDialog(i: Incident?, close: () -> Unit) {
     ) {
         OutlinedTextField(title, { title = it }, label = { Text("Что случилось") }, singleLine = true, modifier = Modifier.fillMaxWidth())
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            DateField(date, { date = it }, modifier = Modifier.weight(1.4f))
+            DateField(date, { date = it; if (kmAuto) km = s.kmAt(it.toEpochDay()).toString() }, modifier = Modifier.weight(1.4f))
             OutlinedButton(onClick = { pickTime = true }, modifier = Modifier.weight(1f).padding(top = 8.dp)) { Text(Fmt.hm(minutes)) }
         }
-        NumField(km, { km = it }, "Пробег", suffix = "км", decimal = false)
+        NumField(km, { km = it; kmAuto = false }, "Пробег", suffix = "км", decimal = false)
         Segmented(listOf(0 to "Заметка", 1 to "Внимание", 2 to "Серьёзно"), severity, { severity = it })
         OutlinedTextField(note, { note = it }, label = { Text("Подробности: звук, условия, что делали") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
         PhotoStrip(

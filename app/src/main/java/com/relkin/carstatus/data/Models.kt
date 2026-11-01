@@ -91,8 +91,14 @@ data class LogEntry(
     val liters: Double = 0.0,
     val full: Boolean = true,
     val note: String = "",
+    /** Производитель детали/материала (для ТО, работ, запчастей). */
+    val brand: String = "",
+    /** Артикул (номер детали) — можно несколько через запятую. */
+    val partNo: String = "",
 ) {
     val total: Double get() = amount + parts
+    /** «Бренд · арт. 123» для списков и отчётов. */
+    val partInfo: String get() = listOfNotNull(brand.trim().ifBlank { null }, partNo.trim().ifBlank { null }?.let { "арт. $it" }).joinToString(" · ")
 }
 
 /** Запись дневника: происшествие, странный звук, ДТП, поломка в пути. */
@@ -163,6 +169,20 @@ data class Snapshot(
     }
 
     val lastOdoDate: Long? by lazy { readings.maxOfOrNull { it.first } }
+
+    /**
+     * Пробег на дату по показаниям: точное показание этого дня, иначе линейно между соседними.
+     * До первого показания — первое, после последнего — текущий пробег.
+     */
+    fun kmAt(date: Long): Long {
+        val r = readings
+        if (r.isEmpty()) return currentKm
+        r.filter { it.first == date }.maxOfOrNull { it.second }?.let { return it }
+        val before = r.lastOrNull { it.first < date } ?: return r.first().second
+        val after = r.firstOrNull { it.first > date } ?: return currentKm
+        val k = (date - before.first).toDouble() / (after.first - before.first)
+        return before.second + Math.round((after.second - before.second) * k)
+    }
 
     val kind: VehicleKind get() = car.kind
     /** Средний суточный пробег, пока его не посчитать по истории. */

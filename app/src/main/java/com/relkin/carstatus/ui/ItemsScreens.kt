@@ -188,7 +188,7 @@ fun ItemDetailScreen(id: Long) {
             items(history, key = { it.id }) { e ->
                 ListItem(
                     headlineContent = { Text(Reports.entryTitle(s, e)) },
-                    supportingContent = { Text(Fmt.day(e.date) + (e.km?.let { " · " + Fmt.km(it) } ?: "") + if (e.note.isNotBlank()) " · ${e.note}" else "") },
+                    supportingContent = { Text(Fmt.day(e.date) + (e.km?.let { " · " + Fmt.km(it) } ?: "") + (if (e.partInfo.isNotBlank()) " · ${e.partInfo}" else "") + if (e.note.isNotBlank()) " · ${e.note}" else "") },
                     trailingContent = { if (e.total > 0) Text(Fmt.money(e.total)) },
                     modifier = Modifier.clickable { ui.edit = Edit.Log(e, e.type) },
                 )

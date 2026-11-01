@@ -90,7 +90,7 @@ private fun rows(s: Snapshot): List<JRow> {
             LogType.PART -> Icons.Filled.Inventory2 to JFilter.COST
             else -> Icons.Filled.ReceiptLong to JFilter.COST
         }
-        val sub = listOfNotNull(e.km?.let { Fmt.km(it) }, e.note.takeIf { it.isNotBlank() }).joinToString(" · ")
+        val sub = listOfNotNull(e.km?.let { Fmt.km(it) }, e.partInfo.takeIf { it.isNotBlank() }, e.note.takeIf { it.isNotBlank() }).joinToString(" · ")
         out += JRow("l${e.id}", e.date * 86_400_000L + 43_200_000L, LocalDate.ofEpochDay(e.date), icon, Reports.entryTitle(s, e), sub, e.total, s.photosOf(PhotoOwner.LOG, e.id), f) {
             it.edit = Edit.Log(e, e.type)
         }

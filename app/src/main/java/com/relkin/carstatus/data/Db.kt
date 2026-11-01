@@ -7,7 +7,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
 object Schema {
-    const val VERSION = 1
+    const val VERSION = 2
     /** Файл базы первого транспорта (с версии 0.1); у остальных — vehicle_<id>.db. */
     const val NAME = "car.db"
 
@@ -17,7 +17,7 @@ object Schema {
         "CREATE TABLE items (_id INTEGER PRIMARY KEY, name TEXT NOT NULL, icon TEXT, km_interval INTEGER, day_interval INTEGER, " +
             "last_km INTEGER, last_date INTEGER, enabled INTEGER NOT NULL DEFAULT 1, position INTEGER, note TEXT, cost REAL)",
         "CREATE TABLE log (_id INTEGER PRIMARY KEY, type INTEGER NOT NULL, date INTEGER NOT NULL, km INTEGER, item_id INTEGER, " +
-            "title TEXT, amount REAL, parts REAL, liters REAL, full INTEGER, note TEXT)",
+            "title TEXT, amount REAL, parts REAL, liters REAL, full INTEGER, note TEXT, brand TEXT, part_no TEXT)",
         "CREATE TABLE incidents (_id INTEGER PRIMARY KEY, time INTEGER NOT NULL, km INTEGER, title TEXT, note TEXT, severity INTEGER)",
         "CREATE TABLE photos (_id INTEGER PRIMARY KEY, time INTEGER NOT NULL, km INTEGER, file TEXT NOT NULL, caption TEXT, owner_type INTEGER, owner_id INTEGER)",
         "CREATE TABLE breakdowns (_id INTEGER PRIMARY KEY, title TEXT NOT NULL, note TEXT, priority INTEGER, done INTEGER, " +
@@ -40,7 +40,12 @@ class DbHelper(ctx: Context, name: String) : SQLiteOpenHelper(ctx, name, null, S
         Schema.CREATE.forEach(db::execSQL)
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {}
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) {
+            db.execSQL("ALTER TABLE log ADD COLUMN brand TEXT")
+            db.execSQL("ALTER TABLE log ADD COLUMN part_no TEXT")
+        }
+    }
 }
 
 fun Cursor.str(c: String): String = getString(getColumnIndexOrThrow(c)) ?: ""
