@@ -1,18 +1,18 @@
 {
-  "version": "0.8.3",
-  "date": "2026-11-01",
-  "file": "CarStatus-0.8.3.apk",
-  "size": 2860512,
-  "sha256": "53bb681f4ee149d8badd17101a4d82a5ea7999592348bdae13f1b018ee5bbc16",
-  "url": "https://mega.nz/file/s7xTzJjJ#EJCoOXclMkdOI44DD_YDYDF_8NgyvEh9bSdjtPozn3c",
+  "version": "0.9.0",
+  "date": "2026-11-02",
+  "file": "CarStatus-0.9.0.apk",
+  "size": 2926048,
+  "sha256": "31a3c0de25dc1e212848c8d686052d9fc7d3f9c2434e98d11ff66f47c5df2f63",
+  "url": "https://mega.nz/file/MuAFVLIA#uS4zGHtu2U3Ge95UdzxR7YtVyzLFDMyRt2BJ72KoYuw",
   "minAndroid": "10",
   "previous": {
-    "version": "0.8.2",
+    "version": "0.8.3",
     "date": "2026-11-01",
-    "file": "CarStatus-0.8.2.apk",
+    "file": "CarStatus-0.8.3.apk",
     "size": 2860512,
-    "sha256": "3ac583b18db4ad9bb5e5379f0ac6a3912e56c8a91633f7edbb9dccafb8eab7f2",
-    "url": "https://mega.nz/file/FrAgRAhS#zwga2AczULslVDhxTn2Jl1c2hecVujhbUk22LxFjOoQ",
+    "sha256": "53bb681f4ee149d8badd17101a4d82a5ea7999592348bdae13f1b018ee5bbc16",
+    "url": "https://mega.nz/file/s7xTzJjJ#EJCoOXclMkdOI44DD_YDYDF_8NgyvEh9bSdjtPozn3c",
     "minAndroid": "10"
   }
 }
