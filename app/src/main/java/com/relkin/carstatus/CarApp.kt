@@ -1,6 +1,7 @@
 package com.relkin.carstatus
 
 import android.app.Application
+import com.relkin.carstatus.data.AutoBackup
 import com.relkin.carstatus.data.Garage
 import com.relkin.carstatus.data.Repo
 import com.relkin.carstatus.notify.Reminders
@@ -8,6 +9,7 @@ import com.relkin.carstatus.obd.Obd
 import com.relkin.carstatus.util.Fmt
 import com.relkin.carstatus.util.Lang
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlin.concurrent.thread
 
 class CarApp : Application() {
     lateinit var prefs: Prefs
@@ -31,6 +33,8 @@ class CarApp : Application() {
         Reminders.createChannels(this)
         prefs.onChanged = { Reminders.reschedule(this) }
         Reminders.reschedule(this)
+        // ежедневная проверка могла не сработать (телефон был выключен) — догоняем при запуске
+        if (AutoBackup.due(this)) thread { AutoBackup.runIfDue(this) }
     }
 
     /** С 0.1: средний пробег из общих настроек — в профиль первого транспорта (вид угадывается по полю «Топливо»). */

@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.ReportProblem
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.TireRepair
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -40,6 +41,7 @@ import com.relkin.carstatus.data.Health
 import com.relkin.carstatus.data.ItemHealth
 import com.relkin.carstatus.data.Quests
 import com.relkin.carstatus.data.Tips
+import com.relkin.carstatus.data.Tires
 import com.relkin.carstatus.data.Trigger
 import com.relkin.carstatus.util.Fmt
 import com.relkin.carstatus.util.tr
@@ -118,6 +120,21 @@ fun StatusScreen() {
                         Column(Modifier.padding(16.dp)) {
                             Text("💡 ${t.title}", style = MaterialTheme.typography.titleSmall)
                             Text(t.text, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+            // шины: не по сезону или стоящий комплект изношен/стар
+            val tireWarns = if (!Tires.supported(s.kind)) emptyList() else
+                listOfNotNull(Tires.seasonWarn(s)) + (Tires.mounted(s)?.let { Tires.warnings(it) }.orEmpty())
+            if (tireWarns.isNotEmpty()) item(key = "tires") {
+                Card(Modifier.fillMaxWidth().clickable { ui.push(Route.Tires) }, colors = CardDefaults.cardColors(MaterialTheme.colorScheme.secondaryContainer)) {
+                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.TireRepair, null)
+                        Spacer(Modifier.size(12.dp))
+                        Column {
+                            Text(Tires.mounted(s)?.let { tr("Шины: ", "Шини: ") + it.label } ?: tr("Шины", "Шини"), style = MaterialTheme.typography.titleSmall)
+                            tireWarns.forEach { Text(it.text.replaceFirstChar { c -> c.uppercase() }, style = MaterialTheme.typography.bodySmall, color = if (it.serious) dc.critical else MaterialTheme.colorScheme.onSecondaryContainer) }
                         }
                     }
                 }

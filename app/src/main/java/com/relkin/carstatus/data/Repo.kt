@@ -94,6 +94,17 @@ class Repo(private val ctx: Context, val dbName: String) {
                 )
             },
             questDone = d.list("SELECT key FROM quest_done") { it.str("key") }.toSet(),
+            tireSets = d.list("SELECT * FROM tire_sets ORDER BY retired, position, _id") {
+                TireSet(
+                    id = it.long("_id"), name = it.str("name"), season = it.int("season"), brand = it.str("brand"), model = it.str("model"),
+                    size = it.str("size"), dot = it.str("dot"), purchaseDate = it.longOrNull("purchase_date"), price = it.dbl("price"),
+                    kmBefore = it.longOrNull("km_before") ?: 0, tread = it.dbl("tread"), treadDate = it.longOrNull("tread_date"),
+                    storage = it.str("storage"), note = it.str("note"), retired = it.int("retired") == 1, position = it.int("position"),
+                )
+            },
+            tireMounts = d.list("SELECT * FROM tire_mounts ORDER BY date_on DESC, _id DESC") {
+                TireMount(it.long("_id"), it.long("set_id"), it.long("date_on"), it.long("km_on"), it.longOrNull("date_off"), it.longOrNull("km_off"))
+            },
         )
         // Подставленный пробег считаем по текущим показаниям: показания, добавленные позже, его уточняют
         if (snap.odo.isEmpty()) return snap
@@ -269,6 +280,52 @@ class Repo(private val ctx: Context, val dbName: String) {
         if (done) insertWithOnConflict("quest_done", null, values("key" to key), SQLiteDatabase.CONFLICT_IGNORE)
         else delete("quest_done", "key=?", arrayOf(key))
     }
+
+    // ---------- Шины ----------
+
+    fun saveTireSet(t: TireSet) = write {
+        val v = values(
+            "name" to t.name, "season" to t.season, "brand" to t.brand, "model" to t.model, "size" to t.size, "dot" to t.dot,
+            "purchase_date" to t.purchaseDate, "price" to t.price, "km_before" to t.kmBefore, "tread" to t.tread, "tread_date" to t.treadDate,
+            "storage" to t.storage, "note" to t.note, "retired" to t.retired, "position" to t.position,
+        )
+        if (t.id == 0L) insert("tire_sets", null, v.apply { put("position", (s.tireSets.maxOfOrNull { it.position } ?: -1) + 1) })
+        else update("tire_sets", v, "_id=?", arrayOf(t.id.toString()))
+        // списанный комплект не может стоять на колёсах
+        if (t.retired && t.id != 0L) closeMounts(t.id, today(), s.currentKm)
+    }
+
+    fun deleteTireSet(id: Long) = write {
+        delete("tire_mounts", "set_id=?", arrayOf(id.toString()))
+        delete("tire_sets", "_id=?", arrayOf(id.toString()))
+    }
+
+    /**
+     * Поставить комплект [setId] (null — только снять текущий) в день [date] на пробеге [km].
+     * Стоявший комплект снимается тогда же. [cost] > 0 — запись «Работы: шиномонтаж» в журнал.
+     */
+    fun mountTires(setId: Long?, date: Long, km: Long, cost: Double, title: String) = write {
+        closeMounts(null, date, km)
+        if (setId != null) insert("tire_mounts", null, values("set_id" to setId, "date_on" to date, "km_on" to km))
+        if (km > s.currentKm) insert("odo", null, values("date" to date, "km" to km, "source" to OdoSource.RECORD))
+        if (cost > 0) insert("log", null, values(
+            "type" to LogType.WORK, "date" to date, "km" to km, "title" to title, "amount" to cost, "parts" to 0.0,
+            "liters" to 0.0, "full" to true, "note" to "", "brand" to "", "part_no" to "", "km_manual" to true,
+        ))
+    }
+
+    /** Закрыть открытые периоды (всех комплектов или только [setId]); пробег снятия не меньше пробега установки. */
+    private fun SQLiteDatabase.closeMounts(setId: Long?, date: Long, km: Long) {
+        for (m in s.tireMounts.filter { it.dateOff == null && (setId == null || it.setId == setId) }) {
+            update("tire_mounts", values("date_off" to maxOf(date, m.dateOn), "km_off" to maxOf(km, m.kmOn)), "_id=?", arrayOf(m.id.toString()))
+        }
+    }
+
+    fun saveTireMount(m: TireMount) = write {
+        update("tire_mounts", values("date_on" to m.dateOn, "km_on" to m.kmOn, "date_off" to m.dateOff, "km_off" to m.kmOff), "_id=?", arrayOf(m.id.toString()))
+    }
+
+    fun deleteTireMount(id: Long) = write { delete("tire_mounts", "_id=?", arrayOf(id.toString())) }
 
     // ---------- Профиль авто в JSON ----------
 

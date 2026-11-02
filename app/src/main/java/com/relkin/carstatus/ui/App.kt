@@ -62,6 +62,8 @@ sealed interface Route {
     data object Settings : Route
     data object Garage : Route
     data object Odo : Route
+    data object Tires : Route
+    data object AutoBackup : Route
     data class Report(val kind: ReportKind) : Route
 }
 
@@ -150,9 +152,9 @@ private fun VehicleRoot(app: CarApp, ui: Ui) {
         }
         val pendingOpen by app.pendingOpen.collectAsState()
         LaunchedEffect(pendingOpen, snap.setupDone) {
-            if (pendingOpen == MainActivity.OPEN_ODO && snap.setupDone) {
-                ui.edit = Edit.Odo
-                app.pendingOpen.value = null
+            if (snap.setupDone) when (pendingOpen) {
+                MainActivity.OPEN_ODO -> { ui.edit = Edit.Odo; app.pendingOpen.value = null }
+                MainActivity.OPEN_ADD -> { ui.edit = Edit.AddMenu; app.pendingOpen.value = null }
             }
         }
 
@@ -224,6 +226,8 @@ private fun RouteScreen(r: Route) {
         Route.Settings -> SettingsScreen()
         Route.Garage -> GarageScreen()
         Route.Odo -> OdoScreen()
+        Route.Tires -> TiresScreen()
+        Route.AutoBackup -> AutoBackupScreen()
         is Route.Report -> ReportScreen(r.kind)
     }
 }

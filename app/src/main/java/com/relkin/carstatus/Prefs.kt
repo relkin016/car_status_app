@@ -31,7 +31,17 @@ class Prefs(ctx: Context) {
         }
     }
 
-    /** 0 — как в системе, 1 — светлая, 2 — тёмная. */
+    inner class LongPref(val key: String, def: Long) {
+        private val flow = MutableStateFlow(sp.getLong(key, def))
+        val state: StateFlow<Long> get() = flow
+        val value: Long get() = flow.value
+        fun set(v: Long) {
+            sp.edit().putLong(key, v).apply()
+            flow.value = v
+        }
+    }
+
+    /** 0 — как в системе, 1 — светлая, 2 — тёмная, 3 — AMOLED (тёмная, чисто чёрный фон). */
     val theme = IntPref("theme", 0)
     val dynamicColor = IntPref("dynamic_color", 0)
     /** Язык: Lang.AUTO — как в системе, Lang.RU, Lang.UK. */
@@ -49,11 +59,28 @@ class Prefs(ctx: Context) {
     val odoDays = IntPref("odo_days", 14, true)
     val questMode = IntPref("quest_mode", 1, true)
     val tipMode = IntPref("tip_mode", 1, true)
+    /** Шины: протектор, возраст, не по сезону. */
+    val tireMode = IntPref("tire_mode", 1, true)
+    /** Напоминание внести расходы и [costPeriod]: 0 — каждый день, 1 — в воскресенье, 2 — в последний день месяца. */
+    val costMode = IntPref("cost_mode", 0, true)
+    val costPeriod = IntPref("cost_period", 1)
+    /** День (epochDay) последнего напоминания о расходах — чтобы «Проверить сейчас» не дублировало. */
+    val lastCostRemind = LongPref("last_cost_remind", 0)
     /** Время ежедневной проверки, минуты от начала суток. */
     val checkTime = IntPref("check_time", 10 * 60, true)
 
     /** Версия 0.1: средний пробег в месяц (теперь — в профиле каждого транспорта). Переносится в первый транспорт. */
     val legacyKmPerMonth: Int? get() = if (sp.contains("km_per_month")) sp.getInt("km_per_month", 0) else null
+
+    /** Автокопия: раз в столько дней (0 — выкл), в папку [backupDir] (URI дерева SAF), хранить [backupKeep] последних. */
+    val backupDays = IntPref("backup_days", 0, true)
+    val backupKeep = IntPref("backup_keep", 5)
+    val backupDir = StrPref("backup_dir", "")
+    /** Когда сделана последняя удачная автокопия (мс) и текст последней ошибки (пусто — без ошибок). */
+    val backupLast = LongPref("backup_last", 0)
+    val backupError = StrPref("backup_error", "")
+    /** Уведомление, если автокопия не удалась. */
+    val backupMode = IntPref("backup_mode", 1)
 
     /** Включать стоимость в историю для покупателя. */
     val reportCosts = IntPref("report_costs", 0)

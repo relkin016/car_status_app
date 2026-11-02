@@ -20,9 +20,11 @@ import com.relkin.carstatus.R
 import com.relkin.carstatus.data.Health
 import com.relkin.carstatus.data.Quests
 import com.relkin.carstatus.data.Tips
+import com.relkin.carstatus.data.Tires
 import com.relkin.carstatus.data.Trigger
 import com.relkin.carstatus.util.Fmt
 import com.relkin.carstatus.util.tr
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
@@ -54,11 +56,13 @@ object Reminders {
     // Внутри диапазона транспорта (см. nid)
     private const val N_OPEN = 1
     private const val N_ODO = 10
+    private const val N_TIRE = 50
     private const val N_QUEST = 100
     private const val N_HP = 1000
     // Общие (ниже 10 000 — диапазон транспорта № 1 начинается с 10 000)
     private const val N_TEST = 11
     private const val N_TIP = 200
+    private const val N_COST = 13
 
     fun createChannels(ctx: Context) {
         val nm = ctx.getSystemService(NotificationManager::class.java)
@@ -112,7 +116,7 @@ object Reminders {
         val am = ctx.getSystemService(AlarmManager::class.java)
         val pi = receiverIntent(ctx, ACTION_DAILY, CODE_DAILY)
         am.cancel(pi)
-        if (listOf(p.hpMode, p.odoMode, p.questMode, p.tipMode).all { it.value == Mode.OFF }) return
+        if (listOf(p.hpMode, p.odoMode, p.questMode, p.tipMode, p.tireMode, p.costMode).all { it.value == Mode.OFF } && p.backupDays.value == 0) return
         var t = at(LocalDate.now(), p.checkTime.value)
         if (t <= System.currentTimeMillis()) t = at(LocalDate.now().plusDays(1), p.checkTime.value)
         schedule(ctx, t, pi)
@@ -208,6 +212,21 @@ object Reminders {
                     )
                 }
             }
+
+            if (p.tireMode.value != Mode.OFF && Tires.supported(s.kind)) {
+                // сезон — по стоящему комплекту, протектор и возраст — по всем, кроме списанных
+                val warns = listOfNotNull(Tires.seasonWarn(s, today)?.let { null to it }) +
+                    s.tireSets.flatMap { set -> Tires.warnings(set, today).map { set to it } }
+                warns.forEachIndexed { i, (set, w) ->
+                    val key = vkey(vid, "tire:${w.key}")
+                    if (key in notified || i >= 50) return@forEachIndexed
+                    notified += key
+                    show(
+                        ctx, nid(vid, N_TIRE + i), "🛞 $who" + (set?.title?.let { tr("Шины «$it»", "Шини «$it»") } ?: tr("Шины", "Шини")),
+                        w.text.replaceFirstChar { it.uppercase() }, p.tireMode.value, open,
+                    )
+                }
+            }
         }
 
         if (p.tipMode.value != Mode.OFF) {
@@ -219,6 +238,28 @@ object Reminders {
                 if (key in notified) return@forEachIndexed
                 notified += key
                 show(ctx, N_TIP + i, "💡 ${t.title}", t.text, p.tipMode.value)
+            }
+        }
+
+        if (p.costMode.value != Mode.OFF && vehicles.isNotEmpty() && p.lastCostRemind.value != today.toEpochDay()) {
+            val (due, what) = when (p.costPeriod.value) {
+                0 -> true to tr("сегодня", "сьогодні")
+                1 -> (today.dayOfWeek == DayOfWeek.SUNDAY) to tr("за неделю", "за тиждень")
+                else -> (today.plusDays(1).dayOfMonth == 1) to tr("за месяц", "за місяць")
+            }
+            if (due) {
+                p.lastCostRemind.set(today.toEpochDay())
+                val add = PendingIntent.getActivity(
+                    ctx, N_COST,
+                    Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                        .putExtra(MainActivity.EXTRA_OPEN, MainActivity.OPEN_ADD).putExtra(EXTRA_NOTIF, N_COST),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
+                show(
+                    ctx, N_COST, "🧾 " + tr("Внесите расходы", "Внесіть витрати"),
+                    tr("Запишите заправки, ремонт и прочие траты $what — цена километра будет точной.", "Запишіть заправки, ремонт та інші витрати $what — ціна кілометра буде точною."),
+                    p.costMode.value, add, listOf(tr("Добавить", "Додати") to add),
+                )
             }
         }
 

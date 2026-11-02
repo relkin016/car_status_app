@@ -181,6 +181,8 @@ data class Snapshot(
     val breakdowns: List<Breakdown> = emptyList(),
     /** Отмеченные шаги квестов: "квест:сезон:шаг". */
     val questDone: Set<String> = emptySet(),
+    val tireSets: List<TireSet> = emptyList(),
+    val tireMounts: List<TireMount> = emptyList(),
     val setupDone: Boolean = false,
 ) {
     /** Текущий пробег — наибольшее известное показание. */

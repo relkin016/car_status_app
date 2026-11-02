@@ -7,7 +7,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
 object Schema {
-    const val VERSION = 3
+    const val VERSION = 4
     /** Файл базы первого транспорта (с версии 0.1); у остальных — vehicle_<id>.db. */
     const val NAME = "car.db"
 
@@ -24,7 +24,15 @@ object Schema {
             "created_date INTEGER, created_km INTEGER, done_date INTEGER, position INTEGER)",
         "CREATE TABLE quest_done (key TEXT PRIMARY KEY)",
         "CREATE INDEX log_date ON log(date)",
+    ) + listOf(
+        // с версии 4 — комплекты шин и периоды, когда они стояли на транспорте
+        "CREATE TABLE tire_sets (_id INTEGER PRIMARY KEY, name TEXT NOT NULL, season INTEGER, brand TEXT, model TEXT, size TEXT, dot TEXT, " +
+            "purchase_date INTEGER, price REAL, km_before INTEGER, tread REAL, tread_date INTEGER, storage TEXT, note TEXT, retired INTEGER, position INTEGER)",
+        "CREATE TABLE tire_mounts (_id INTEGER PRIMARY KEY, set_id INTEGER NOT NULL, date_on INTEGER NOT NULL, km_on INTEGER NOT NULL, date_off INTEGER, km_off INTEGER)",
     )
+
+    /** Таблицы, добавленные в версии 4 (последние в [CREATE]). */
+    val V4: List<String> get() = CREATE.takeLast(2)
 
     /** Без этих таблиц файл не считаем резервной копией. */
     val REQUIRED = setOf("meta", "odo", "items", "log")
@@ -47,6 +55,7 @@ class DbHelper(ctx: Context, name: String) : SQLiteOpenHelper(ctx, name, null, S
         }
         // Старые записи считаем введёнными вручную — их пробег не пересчитываем
         if (oldVersion < 3) db.execSQL("ALTER TABLE log ADD COLUMN km_manual INTEGER NOT NULL DEFAULT 1")
+        if (oldVersion < 4) Schema.V4.forEach(db::execSQL)
     }
 }
 

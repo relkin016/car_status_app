@@ -38,6 +38,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.TireRepair
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.History
@@ -132,11 +134,27 @@ fun MoreScreen() {
             if (Quests.of(s.kind).isNotEmpty()) item { Entry(Icons.Filled.EmojiEvents, tr("Сезонные квесты", "Сезонні квести"), tr("Подготовка к зиме и сезону", "Підготовка до зими й сезону")) { ui.push(Route.Quests) } }
             item { Entry(Icons.Filled.PhotoLibrary, tr("Фото-журнал", "Фотожурнал")) { ui.push(Route.Photos) } }
             item { Entry(Icons.Filled.Speed, tr("Показания одометра", "Показники одометра")) { ui.push(Route.Odo) } }
+            if (com.relkin.carstatus.data.Tires.supported(s.kind)) item {
+                val on = com.relkin.carstatus.data.Tires.mounted(s)
+                Entry(Icons.Filled.TireRepair, tr("Шины", "Шини"), on?.let { tr("Стоят: ", "Стоять: ") + it.label } ?: tr("Комплекты, пробег, протектор, переобувка", "Комплекти, пробіг, протектор, перевзування")) { ui.push(Route.Tires) }
+            }
             item { SectionTitle(tr("Отчёты", "Звіти")) }
             item { Entry(Icons.Filled.History, tr("История для покупателя", "Історія для покупця"), tr("Полная история обслуживания одним документом (PDF)", "Повна історія обслуговування одним документом (PDF)")) { ui.push(Route.Report(ReportKind.BUYER)) } }
             item { Entry(Icons.AutoMirrored.Filled.ReceiptLong, tr("Выписка расходов", "Виписка витрат"), tr("Как банковская: операции, итоги, цена км (PDF)", "Як банківська: операції, підсумки, ціна км (PDF)")) { ui.push(Route.Report(ReportKind.STATEMENT)) } }
             item { SectionTitle(tr("Данные", "Дані")) }
             item { Entry(Icons.Filled.Backup, tr("Экспорт базы (резервная копия)", "Експорт бази (резервна копія)"), tr("Файл .zip: все гаражи, транспорт и фото", "Файл .zip: усі гаражі, транспорт і фото")) { exportLauncher.launch("carstatus-${LocalDate.now()}.zip") } }
+            item {
+                val days by ui.prefs.backupDays.state.collectAsState()
+                val err by ui.prefs.backupError.state.collectAsState()
+                Entry(
+                    Icons.Filled.CloudSync, tr("Автокопия", "Автокопія"),
+                    when {
+                        err.isNotEmpty() -> tr("Ошибка: ", "Помилка: ") + err
+                        days == 0 -> tr("Выключена — копия в папку по расписанию", "Вимкнено — копія в теку за розкладом")
+                        else -> tr("Раз в ${Fmt.days(days.toLong())}", "Раз на ${Fmt.days(days.toLong())}")
+                    },
+                ) { ui.push(Route.AutoBackup) }
+            }
             item { Entry(Icons.Filled.Restore, tr("Восстановить из копии", "Відновити з копії"), tr("Текущие данные будут заменены", "Поточні дані буде замінено")) { importLauncher.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) } }
             item { SectionTitle(tr("Приложение", "Застосунок")) }
             item { Entry(Icons.Filled.Share, tr("Поделиться приложением (APK)", "Поділитися застосунком (APK)"), tr("Отправить установочный файл другу", "Надіслати інсталяційний файл другові")) { shareApk(ctx, ui) } }
@@ -411,6 +429,9 @@ fun SettingsScreen() {
     val odoMode by p.odoMode.state.collectAsState()
     val questMode by p.questMode.state.collectAsState()
     val tipMode by p.tipMode.state.collectAsState()
+    val tireMode by p.tireMode.state.collectAsState()
+    val costMode by p.costMode.state.collectAsState()
+    val costPeriod by p.costPeriod.state.collectAsState()
     val time by p.checkTime.state.collectAsState()
     val currency by p.currency.state.collectAsState()
     val lang by p.lang.state.collectAsState()
@@ -436,7 +457,7 @@ fun SettingsScreen() {
                 ctx.findActivity()?.recreate()
             })
             Text(tr("Тема", "Тема"))
-            Segmented(listOf(0 to tr("Системная", "Системна"), 1 to tr("Светлая", "Світла"), 2 to tr("Тёмная", "Темна")), theme, p.theme::set)
+            Segmented(listOf(0 to tr("Системная", "Системна"), 1 to tr("Светлая", "Світла"), 2 to tr("Тёмная", "Темна"), 3 to "AMOLED"), theme, p.theme::set)
             if (Build.VERSION.SDK_INT >= 31) Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(tr("Цвета обоев (Material You)", "Кольори шпалер (Material You)"), Modifier.weight(1f)); Switch(dynamic == 1, { p.dynamicColor.set(if (it) 1 else 0) })
             }
@@ -447,7 +468,7 @@ fun SettingsScreen() {
             if (!Reminders.canNotify(ctx)) OutlinedButton(onClick = {
                 ctx.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName))
             }) { Text(tr("Уведомления запрещены — открыть настройки", "Сповіщення заборонено — відкрити налаштування")) }
-            if (!Reminders.canFullScreen(ctx) && listOf(hpMode, odoMode, questMode, tipMode).contains(2)) OutlinedButton(onClick = {
+            if (!Reminders.canFullScreen(ctx) && listOf(hpMode, odoMode, questMode, tipMode, tireMode, costMode).contains(2)) OutlinedButton(onClick = {
                 ctx.startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, android.net.Uri.parse("package:" + ctx.packageName)))
             }) { Text(tr("Разрешить полноэкранный будильник", "Дозволити повноекранний будильник")) }
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -460,8 +481,13 @@ fun SettingsScreen() {
             Text(tr("Напоминание ввести пробег", "Нагадування ввести пробіг"))
             ModeSelector(odoMode, p.odoMode::set)
             PrefNum(p.odoDays, tr("Если пробег не обновляли", "Якщо пробіг не оновлювали"), tr("дн.", "дн."), 1..90)
+            Text(tr("Напоминание внести расходы", "Нагадування внести витрати"))
+            ModeSelector(costMode, p.costMode::set)
+            if (costMode != 0) Segmented(listOf(0 to tr("Ежедневно", "Щодня"), 1 to tr("Еженедельно", "Щотижня"), 2 to tr("Ежемесячно", "Щомісяця")), costPeriod, p.costPeriod::set)
             Text(tr("Сезонные квесты", "Сезонні квести"))
             ModeSelector(questMode, p.questMode::set)
+            Text(tr("Шины: протектор, возраст, не по сезону", "Шини: протектор, вік, не за сезоном"))
+            ModeSelector(tireMode, p.tireMode::set)
             Text(tr("Внесезонные покупки (когда выгодно)", "Позасезонні покупки (коли вигідно)"))
             ModeSelector(tipMode, p.tipMode::set)
             Text(tr("Проверить, как выглядит:", "Перевірити, як виглядає:"), style = MaterialTheme.typography.bodySmall)
@@ -483,7 +509,7 @@ fun SettingsScreen() {
 
 /** Числовая настройка: локальный текст, в настройку уходят только допустимые значения. */
 @Composable
-private fun PrefNum(pref: com.relkin.carstatus.Prefs.IntPref, label: String, suffix: String, range: IntRange, hint: String? = null) {
+fun PrefNum(pref: com.relkin.carstatus.Prefs.IntPref, label: String, suffix: String, range: IntRange, hint: String? = null) {
     var text by remember { mutableStateOf(pref.value.toString()) }
     NumField(text, { v ->
         text = v

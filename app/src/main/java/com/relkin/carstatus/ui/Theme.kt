@@ -2,6 +2,7 @@ package com.relkin.carstatus.ui
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -35,6 +36,14 @@ private val Dark = darkColorScheme(
     surfaceContainer = Color(0xFF1D2024), surfaceContainerHigh = Color(0xFF282A2F), surfaceContainerLow = Color(0xFF191C20),
 )
 
+/** AMOLED: фон и поверхности чисто чёрные, карточки и панели — почти чёрные, чтобы оставались различимы. */
+private fun ColorScheme.amoled() = copy(
+    background = Color.Black, surface = Color.Black, surfaceDim = Color.Black,
+    surfaceContainerLowest = Color.Black, surfaceContainerLow = Color(0xFF0A0A0C), surfaceContainer = Color(0xFF111114),
+    surfaceContainerHigh = Color(0xFF18181C), surfaceContainerHighest = Color(0xFF202025), surfaceBright = Color(0xFF26262B),
+    surfaceVariant = Color(0xFF1A1A1F), inverseOnSurface = Color.Black,
+)
+
 /**
  * Цвета данных. Статусы (HP) — отдельная фиксированная палитра, всегда с подписью %;
  * категории расходов — первые пять категориальных слотов в постоянном порядке.
@@ -63,22 +72,24 @@ val LocalData = staticCompositionLocalOf {
 fun CarTheme(prefs: Prefs, content: @Composable () -> Unit) {
     val theme by prefs.theme.state.collectAsState()
     val dynamic by prefs.dynamicColor.state.collectAsState()
+    val amoled = theme == 3
     val dark = when (theme) {
         1 -> false
-        2 -> true
+        2, 3 -> true
         else -> isSystemInDarkTheme()
     }
     val ctx = LocalContext.current
-    val scheme = when {
+    val base = when {
         dynamic == 1 && Build.VERSION.SDK_INT >= 31 -> if (dark) dynamicDarkColorScheme(ctx) else dynamicLightColorScheme(ctx)
         dark -> Dark
         else -> Light
     }
+    val scheme = if (amoled) base.amoled() else base
     val data = DataColors(
         good = Color(0xFF0CA30C), warning = Color(0xFFFAB219), serious = Color(0xFFEC835A), critical = Color(0xFFD03B3B),
         cats = if (dark) listOf(Color(0xFF3987E5), Color(0xFFD95926), Color(0xFF9A6BDB), Color(0xFF199E70), Color(0xFFC98500))
         else listOf(Color(0xFF2A78D6), Color(0xFFEB6834), Color(0xFF8A55D0), Color(0xFF1BAF7A), Color(0xFFEDA100)),
-        track = if (dark) Color(0xFF383835) else Color(0xFFE1E0D9),
+        track = if (amoled) Color(0xFF2A2A2C) else if (dark) Color(0xFF383835) else Color(0xFFE1E0D9),
         gap = scheme.surfaceContainerLow,
     )
     CompositionLocalProvider(LocalData provides data) {
